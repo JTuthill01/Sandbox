@@ -1,5 +1,7 @@
 #include "StopFireAnimNotify.h"
 #include "Sandbox/Character/PlayerCharacter.h"
+#include "Sandbox/Interfaces/PlayerRef.h"
+#include "Kismet/GameplayStatics.h"
 
 void UStopFireAnimNotify::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceBase* Animation)
 {

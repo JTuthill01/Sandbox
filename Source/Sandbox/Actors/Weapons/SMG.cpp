@@ -2,6 +2,7 @@
 #include "../Plugins/FX/Niagara/Source/Niagara/Public/NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sandbox/Instances/SandboxGameInstance.h"
 
 ASMG::ASMG() = default;
 
@@ -46,5 +47,9 @@ void ASMG::WeaponReload()
 void ASMG::BeginPlay()
 {
 	Super::BeginPlay();
+
+	USandboxGameInstance* Instance = Cast<USandboxGameInstance>(UGameplayStatics::GetGameInstance(GetWorld()));
+
+	AmmoData = Instance->SMGData();
 }
 

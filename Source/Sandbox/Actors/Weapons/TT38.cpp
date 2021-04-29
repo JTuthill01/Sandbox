@@ -2,6 +2,7 @@
 #include "../Plugins/FX/Niagara/Source/Niagara/Public/NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sandbox/Instances/SandboxGameInstance.h"
 
 ATT38::ATT38() = default;
 
@@ -46,4 +47,8 @@ void ATT38::WeaponReload()
 void ATT38::BeginPlay()
 {
 	Super::BeginPlay();
+
+	USandboxGameInstance* Instance = Cast<USandboxGameInstance>(UGameplayStatics::GetGameInstance(GetWorld()));
+
+	AmmoData = Instance->T38Data();
 }

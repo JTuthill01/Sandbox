@@ -3,10 +3,17 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Math/Quat.h"
+#include "Sandbox/Structs/STR_AmmoData.h"
+#include "Sandbox/Interfaces/Take_Damage.h"
+#include "Sandbox/Interfaces/PlayerRef.h"
+#include "Sandbox/Interfaces/References.h"
 #include "WeaponBase.generated.h"
 
 UENUM(BlueprintType)
 enum class EWeaponType : uint8 { TT38, ShortStrokeAR, AmericanShotgun, Bulldog, L86, HandCannon, AK47, SMG, BelgianAR, SKS, XM82 };
+
+UENUM(BlueprintType)
+enum class EWeaponClass : uint8 { Pistol, Rifle, Shotgun };
 
 UENUM(BlueprintType)
 enum class EFireType : uint8 { Hitscan, Projectile };
@@ -27,26 +34,10 @@ public:
 	bool bIsEquipped;
 };
 
-USTRUCT(BlueprintType)
-struct FAmmoData
-{
-	GENERATED_BODY()
-
-public:
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	float Damage;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	float CriticalHit;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	float DamageRadius;
-};
-
-
 UCLASS()
-class SANDBOX_API AWeaponBase : public AActor
-{	GENERATED_BODY()
+class SANDBOX_API AWeaponBase : public AActor, public IPlayerRef
+{	
+	GENERATED_BODY()
 	
 public:	
 	// Sets default values for this actor's properties
@@ -54,14 +45,18 @@ public:
 
 	FORCEINLINE UMaterialInstance* GetIcon() { return Icon; }
 	FORCEINLINE FName GetSocketName() const { return SocketName; }
+
 	FORCEINLINE bool GetIsAiming() const { return bIsAiming; }
+	FORCEINLINE int GetTotalMaxAmmo() const { return MaxTotalAmmo; }
 	FORCEINLINE int GetCurrentTotalAmmo() { return CurrentTotalAmmo; }
-	 
+	FORCEINLINE int GetCurrentAmmo() { return CurrentAmmo; }
+	FORCEINLINE float GetKillImpulse() { return KillImpulse; }
+
+	FORCEINLINE void SetCurrentAmmo(int Ammo) { CurrentAmmo = Ammo; }
+	FORCEINLINE void SetShouldReload(bool Reload) { bShouldReload = Reload; }
+
 	UFUNCTION(BlueprintCallable)
-	int GetCurrentAmmo() { return CurrentAmmo; }
-	
-	UFUNCTION(BlueprintCallable)
-	int GetTotalAmmo() { return CurrentTotalAmmo; }
+	void SetCurrentTotalAmmo(int Ammo);
 
 	UFUNCTION(BlueprintCallable)
 	virtual void WeaponReload();
@@ -91,6 +86,9 @@ public:
 	EWeaponType WeaponType;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Enums)
+	EWeaponClass WeaponClass;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Enums)
 	EFireType fireType;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Sounds)
@@ -106,6 +104,19 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+protected:
+	UPROPERTY()
+	FHitResult Hit;
+
+	UPROPERTY()
+	class APlayerCharacter* PlayerRef;
+
+	UPROPERTY()
+	class AAICharacter* Character;
+
+	UPROPERTY()
+	class AImpactEffects* Impact;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	USkeletalMeshComponent* WeaponMesh;
 
@@ -124,6 +135,30 @@ protected:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Animation)
 	class UAnimMontage* WeaponReloadMontage;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Impact)
+	TSubclassOf<class AImpactEffects> ImpactEffects;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Projectile)
+	TSubclassOf<class AProjectileBase> SpawnProjectile;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Projectile)
+	class AProjectileBase* Projectile;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = VFX)
+	class UNiagaraSystem* AmmoEject;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = VFX)
+	class UNiagaraSystem* FireFX;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Sounds)
+	class USoundBase* FireSound;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	class UMaterialInstance* Icon;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FAmmoData AmmoData;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Ammo)
 	int CurrentAmmo;
 
@@ -135,6 +170,12 @@ protected:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Ammo)
 	int MaxTotalAmmo;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Ammo)
+	int LowAmmo;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Ammo)
+	bool bShouldReload;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	float ReloadTime;
@@ -149,7 +190,7 @@ protected:
 	float BulletSpread;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	FAmmoData AmmoData;
+	float KillImpulse;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bIsAiming;
@@ -166,25 +207,11 @@ protected:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Ammo)
 	int BulletCount;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = VFX)
-	class UNiagaraSystem* AmmoEject;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = VFX)
-	class UNiagaraSystem* FireFX;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Sounds)
-	class USoundBase* FireSound;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	class UMaterialInstance* Icon;
-
-	UPROPERTY()
-	class APlayerCharacter* PlayerRef;
-
 public:
 	bool HasAmmoInMag();
 	bool HasExtraAmmo();
 	bool HasFullMag();
+	bool IsAmmoFull();
 
 protected:
 	FQuat EjectQuat;
@@ -192,4 +219,6 @@ protected:
 
 	FQuat FireQuat;
 	FTransform FireTransform;
+
+	int ReloadCurrentAmmo;
 };

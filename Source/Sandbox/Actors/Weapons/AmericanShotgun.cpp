@@ -2,6 +2,7 @@
 #include "../Plugins/FX/Niagara/Source/Niagara/Public/NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sandbox/Instances/SandboxGameInstance.h"
 
 AAmericanShotgun::AAmericanShotgun() = default;
 
@@ -46,4 +47,8 @@ void AAmericanShotgun::WeaponReload()
 void AAmericanShotgun::BeginPlay()
 {
 	Super::BeginPlay();
+
+	USandboxGameInstance* Instance = Cast<USandboxGameInstance>(UGameplayStatics::GetGameInstance(GetWorld()));
+
+	AmmoData = Instance->AmericanShotgunData();
 }

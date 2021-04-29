@@ -3,6 +3,7 @@
 #include "NiagaraSystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystem.h"
+#include "Sandbox/Instances/SandboxGameInstance.h"
 
 AHandCannon::AHandCannon() = default;
 
@@ -47,5 +48,9 @@ void AHandCannon::WeaponReload()
 void AHandCannon::BeginPlay()
 {
 	Super::BeginPlay();
+
+	USandboxGameInstance* Instance = Cast<USandboxGameInstance>(UGameplayStatics::GetGameInstance(GetWorld()));
+
+	AmmoData = Instance->HandCannonData();
 }
 

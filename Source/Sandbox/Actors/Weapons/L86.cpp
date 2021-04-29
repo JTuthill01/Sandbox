@@ -2,6 +2,7 @@
 #include "../Plugins/FX/Niagara/Source/Niagara/Public/NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sandbox/Instances/SandboxGameInstance.h"
 
 AL86::AL86()
 {
@@ -51,4 +52,8 @@ void AL86::WeaponReload()
 void AL86::BeginPlay()
 {
 	Super::BeginPlay();
+
+	USandboxGameInstance* Instance = Cast<USandboxGameInstance>(UGameplayStatics::GetGameInstance(GetWorld()));
+
+	AmmoData = Instance->L86Data();
 }

@@ -2,6 +2,7 @@
 #include "../Plugins/FX/Niagara/Source/Niagara/Public/NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sandbox/Instances/SandboxGameInstance.h"
 
 AXM82::AXM82() = default;
 
@@ -46,5 +47,9 @@ void AXM82::WeaponReload()
 void AXM82::BeginPlay()
 {
 	Super::BeginPlay();
+
+	USandboxGameInstance* Instance = Cast<USandboxGameInstance>(UGameplayStatics::GetGameInstance(GetWorld()));
+
+	AmmoData = Instance->XM82Data();
 }
 

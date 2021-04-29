@@ -2,6 +2,8 @@
 #include "../Plugins/FX/Niagara/Source/Niagara/Public/NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sandbox/Instances/SandboxGameInstance.h"
+#include "Sandbox/Actors/Projectiles/ProjectileBase.h"
 
 ASKS::ASKS()
 {
@@ -23,6 +25,10 @@ void ASKS::WeaponFire(EFireType FireType)
 	FireTransform.GetRotation() = FireQuat;
 
 	WeaponFireAnim = WeaponMesh->GetAnimInstance();
+
+	Projectile->SetAmmoData(AmmoData);
+
+	Projectile->SetModifier(CriticalHitDamageModifier);
 
 	if (WeaponFireAnim)
 	{
@@ -51,4 +57,8 @@ void ASKS::WeaponReload()
 void ASKS::BeginPlay()
 {
 	Super::BeginPlay();
+
+	USandboxGameInstance* Instance = Cast<USandboxGameInstance>(UGameplayStatics::GetGameInstance(GetWorld()));
+
+	AmmoData = Instance->SKSData();
 }

@@ -6,6 +6,9 @@
 #include "Animation/AnimInstance.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Animation/AnimMontage.h"
+#include "Kismet/GameplayStatics.h"
+#include "Math/UnrealMathUtility.h"
+#include "Kismet/KismetStringLibrary.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -25,7 +28,17 @@ APlayerCharacter::APlayerCharacter()
 	bCanSwitchWeapon = true;
 	bCanReload = true;
 
+	DefaultFOV = 90.F;
+
 	ReloadTime = 1.5F;
+
+	MaxHealth = 100;
+	CurrentHealth = MaxHealth;
+
+	MaxArmor = 100;
+	CurrentArmor = MaxArmor;
+
+	RegenerativeHealthRate = 25.F;
 }
 
 // Called when the game starts or when spawned
@@ -34,13 +47,14 @@ void APlayerCharacter::BeginPlay()
 	Super::BeginPlay();
 	
 	DefaultWalkSpeed = GetCharacterMovement()->MaxWalkSpeed;
+
+	CurrentWeapon = Cast<AWeaponBase>(AWeaponBase::StaticClass()->GetDefaultObject());
 }
 
 // Called every frame
 void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
 // Called to bind functionality to input
@@ -64,7 +78,40 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	PlayerInputComponent->BindAction(TEXT("Fire"), IE_Released, this, &APlayerCharacter::FireReleased);
 	PlayerInputComponent->BindAction(TEXT("Interact"), IE_Pressed, this, &APlayerCharacter::Interact);
 	PlayerInputComponent->BindAction(TEXT("Reload"), IE_Pressed, this, &APlayerCharacter::Reload);
-	PlayerInputComponent->BindAction(TEXT("Equip"), IE_Pressed, this, &APlayerCharacter::Equip);
+	PlayerInputComponent->BindAction(TEXT("Damage"), IE_Pressed, this, &APlayerCharacter::DebugTakeDamage);
+	PlayerInputComponent->BindAction(TEXT("ADS"), IE_Pressed, this, &APlayerCharacter::FOnAimEnter);
+	PlayerInputComponent->BindAction(TEXT("ADS"), IE_Released, this, &APlayerCharacter::FOnAimExit);
+}
+
+void APlayerCharacter::PlayerTakeDamage_Implementation(int Damage)
+{
+	GetWorld()->GetTimerManager().ClearTimer(RegenerateHealthTimer);
+
+	if (bIsDead == false)
+	{
+		if (CurrentArmor <= Damage)
+		{
+			int TempDamage = Damage - CurrentArmor;
+
+			CurrentHealth = FMath::Clamp(CurrentHealth - TempDamage, 0, MaxHealth);
+
+			CurrentArmor = 0;
+
+			if (CurrentHealth <= 0)
+			{
+				bIsDead = true;
+
+				PlayerDeath();
+			}
+		}
+
+		else
+		{
+			CurrentArmor -= Damage;
+		}
+
+		GetWorld()->GetTimerManager().SetTimer(RegenerateHealthTimer, this, &APlayerCharacter::RegenerateHealth, 5.F, true);
+	}
 }
 
 void APlayerCharacter::ShowWeapon(AWeaponBase* Weapon)
@@ -121,7 +168,7 @@ bool APlayerCharacter::SpawnWeapon(TSubclassOf<AWeaponBase > WeaponToSpawn, bool
 
 				bIsSuccessful = true;
 
-				bIsFirstSlotActive = false;
+				bIsFirstSlotActive = true;
 
 				bIsSecondSlotActive = false;
 			}
@@ -194,12 +241,10 @@ bool APlayerCharacter::SpawnWeapon(TSubclassOf<AWeaponBase > WeaponToSpawn, bool
 
 void APlayerCharacter::Fire()
 {
-	if (bCanFire == true && bIsReloading == false)
+	if (bCanFire == true && bIsReloading == false && bIsChangingWeapon == false)
 	{
 		if (CurrentWeapon->HasAmmoInMag() == true)
 		{
-			bCanFire = false;
-
 			CurrentWeapon->WeaponFire(CurrentWeapon->fireType);
 
 			OnFireWeapon.Broadcast(CurrentWeapon->WeaponType);
@@ -214,13 +259,15 @@ void APlayerCharacter::Fire()
 				bCanReload = true;
 
 				Reload();
+
+				CurrentWeapon->SetShouldReload(false);
 			}
 		}
 	}
 
-	else
+	if (CurrentWeapon->GetCurrentTotalAmmo() <= 0)
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("No Ammo!!!!!!"));
+		bIsEmpty = true;
 	}
 }
 
@@ -228,7 +275,9 @@ void APlayerCharacter::Reload()
 {
 	if (bCanReload == true && CurrentWeapon->GetCurrentTotalAmmo() > 0)
 	{
-		if (bIsReloading == false || bIsChangingWeapon == false)
+		bIsEmpty = false;
+
+		if (bIsReloading == false && bIsChangingWeapon == false)
 		{
 			if (CurrentWeapon->HasFullMag() == false)
 			{
@@ -238,9 +287,16 @@ void APlayerCharacter::Reload()
 
 				CurrentWeapon->WeaponReload();
 
+				CurrentWeapon->SetShouldReload(false);
+
 				ReloadAnimationToPlay();
 			}
 		}
+	}
+
+	if (CurrentWeapon->GetCurrentTotalAmmo() <= 0)
+	{
+		bIsEmpty = true;
 	}
 }
 
@@ -290,22 +346,70 @@ void APlayerCharacter::LookUpRate(float Value)
 
 void APlayerCharacter::Equip()
 {
-	if (CurrentWeapon != WeaponSlot_01 && bIsFirstSlotFull == true)
+	if (bIsReloading == false || bCanFire == false)
 	{
-		WeaponSlot_02->SetActorHiddenInGame(true);
+		if (CurrentWeapon != WeaponSlot_01 && bIsFirstSlotFull == true)
+		{
+			WeaponSlot_02->SetActorHiddenInGame(true);
 
-		WeaponSlot_01->SetActorHiddenInGame(false);
+			WeaponSlot_01->SetActorHiddenInGame(false);
 
-		CurrentWeapon = WeaponSlot_01;
+			CurrentWeapon = WeaponSlot_01;
+
+			if (CurrentWeapon->GetCurrentTotalAmmo() > 0)
+			{
+				bIsEmpty = false;
+			}
+
+			else
+			{
+				bIsEmpty = true;
+			}
+		}
+
+		else if (CurrentWeapon != WeaponSlot_02 && bIsSecondSlotFull == true)
+		{
+			WeaponSlot_01->SetActorHiddenInGame(true);
+
+			WeaponSlot_02->SetActorHiddenInGame(false);
+
+			CurrentWeapon = WeaponSlot_02;
+
+			if (CurrentWeapon->GetCurrentTotalAmmo() > 0)
+			{
+				bIsEmpty = false;
+			}
+
+			else
+			{
+				bIsEmpty = true;
+			}
+		}
+
+		else if (bIsSecondSlotFull == false)
+		{
+			CurrentWeapon = WeaponSlot_01;
+		}
 	}
+}
 
-	else if (CurrentWeapon != WeaponSlot_02 && bIsSecondSlotFull == true)
+FString APlayerCharacter::GetWeaponSlot_01_Name()
+{
+	return WeaponSlot_01->GetName();
+}
+
+FString APlayerCharacter::GetWeaponSlot_02_Name()
+{
+	return WeaponSlot_02->GetName();
+}
+
+void APlayerCharacter::DebugTakeDamage()
+{
+	ITake_Damage* iTemp = Cast<ITake_Damage>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
+
+	if (iTemp != nullptr)
 	{
-		WeaponSlot_01->SetActorHiddenInGame(true);
-
-		WeaponSlot_02->SetActorHiddenInGame(false);
-
-		CurrentWeapon = WeaponSlot_02;
+		iTemp->Execute_PlayerTakeDamage(this, 24);
 	}
 }
 
@@ -351,13 +455,41 @@ void APlayerCharacter::FireReleased()
 	}
 }
 
+void APlayerCharacter::RegenerateHealth()
+{
+	if (CurrentHealth < MaxHealth && bIsDead == false)
+	{
+		float Temp = RegenerativeHealthRate / 6.F;
+
+		CurrentHealth = FMath::Clamp(CurrentHealth + (int)Temp, 0, MaxHealth);
+
+		if (CurrentHealth >= MaxHealth)
+		{
+			GetWorld()->GetTimerManager().ClearTimer(RegenerateHealthTimer);
+		}
+	}
+}
+
+void APlayerCharacter::SetFOV(float FOV)
+{
+	Camera->SetFieldOfView(FOV);
+}
+
+bool APlayerCharacter::IsHealthFull()
+{
+	if (CurrentHealth == MaxHealth)
+	{
+		return true;
+	}
+
+	return false;
+}
+
 void APlayerCharacter::StopFire()
 {
 	CurrentWeapon->StopFire();
 
 	OnStopFire.Broadcast();
-
-	bCanFire = true;
 }
 
 void APlayerCharacter::FireAnimationToPlay()
@@ -373,6 +505,11 @@ void APlayerCharacter::FireAnimationToPlay()
 			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_TT38]);
 		}
 
+		else
+		{
+			break;
+		}
+
 		break;
 
 	case EWeaponType::ShortStrokeAR:
@@ -380,6 +517,11 @@ void APlayerCharacter::FireAnimationToPlay()
 		if (FireMonatge.IsValidIndex(EFireMontageToPlay::F_ShortStrokeAR))
 		{
 			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_ShortStrokeAR]);
+		}
+
+		else
+		{
+			break;
 		}
 
 		break;
@@ -391,6 +533,11 @@ void APlayerCharacter::FireAnimationToPlay()
 			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_AmericanShotgun]);
 		}
 
+		else
+		{
+			break;
+		}
+
 		break;
 
 	case EWeaponType::Bulldog:
@@ -398,6 +545,11 @@ void APlayerCharacter::FireAnimationToPlay()
 		if (FireMonatge.IsValidIndex(EFireMontageToPlay::F_Bulldog))
 		{
 			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_Bulldog]);
+		}
+
+		else
+		{
+			break;
 		}
 
 		break;
@@ -409,6 +561,11 @@ void APlayerCharacter::FireAnimationToPlay()
 			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_L86]);
 		}
 
+		else
+		{
+			break;
+		}
+
 		break;
 
 	case EWeaponType::HandCannon:
@@ -416,6 +573,11 @@ void APlayerCharacter::FireAnimationToPlay()
 		if (FireMonatge.IsValidIndex(EFireMontageToPlay::F_HandCannon))
 		{
 			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_HandCannon]);
+		}
+
+		else
+		{
+			break;
 		}
 
 		break;
@@ -427,6 +589,11 @@ void APlayerCharacter::FireAnimationToPlay()
 			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_AK47]);
 		}
 
+		else
+		{
+			break;
+		}
+
 		break;
 
 	case EWeaponType::SMG:
@@ -434,6 +601,11 @@ void APlayerCharacter::FireAnimationToPlay()
 		if (FireMonatge.IsValidIndex(EFireMontageToPlay::F_SMG))
 		{
 			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_SMG]);
+		}
+
+		else
+		{
+			break;
 		}
 
 		break;
@@ -445,6 +617,11 @@ void APlayerCharacter::FireAnimationToPlay()
 			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_BelgianAR]);
 		}
 
+		else
+		{
+			break;
+		}
+
 		break;
 
 	case EWeaponType::SKS:
@@ -454,6 +631,11 @@ void APlayerCharacter::FireAnimationToPlay()
 			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_SKS]);
 		}
 
+		else
+		{
+			break;
+		}
+
 		break;
 
 	case EWeaponType::XM82:
@@ -461,6 +643,11 @@ void APlayerCharacter::FireAnimationToPlay()
 		if (FireMonatge.IsValidIndex(EFireMontageToPlay::F_XM82))
 		{
 			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_XM82]);
+		}
+
+		else
+		{
+			break;
 		}
 
 		break;
@@ -587,6 +774,8 @@ void APlayerCharacter::SetIconImage(UMaterialInstance*& Image)
 		Image = CurrentWeapon->GetIcon();
 	}
 }
+
+APlayerCharacter* APlayerCharacter::GetPlayerRef_Implementation() { return this; }
 
 void APlayerCharacter::FOnAimEnter() { OnAimEnter.Broadcast(); }
 

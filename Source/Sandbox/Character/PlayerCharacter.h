@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "Sandbox/Actors/Weapons/WeaponBase.h"
+#include "Sandbox/Interfaces/Take_Damage.h"
+#include "Sandbox/Interfaces/PlayerRef.h"
 #include "PlayerCharacter.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FInteract);
@@ -22,7 +24,7 @@ enum EFireMontageToPlay : uint8 { F_TT38, F_ShortStrokeAR, F_AmericanShotgun, F_
 enum EReloadMontageToPlay : uint8 { R_TT38, R_ShortStrokeAR, R_AmericanShotgun, R_Bulldog, R_L86, R_HandCannon, R_AK47, R_SMG, R_BelgianAR, R_SKS, R_XM82 };
 
 UCLASS()
-class SANDBOX_API APlayerCharacter : public ACharacter
+class SANDBOX_API APlayerCharacter : public ACharacter, public ITake_Damage, public IPlayerRef
 {
 	GENERATED_BODY()
 
@@ -45,8 +47,14 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FAimExit OnAimExit;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Sounds)
-	class USoundBase* CharingHandleSound;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Weapon)
+	EHasWeapon HasWeaponEnum;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	AWeaponBase* CurrentWeapon;
+
+	UFUNCTION(BlueprintCallable)
+	bool IsHealthFull();
 
 	UFUNCTION(BlueprintPure)
 	void SetIconImage(UMaterialInstance*& Image);
@@ -72,12 +80,23 @@ public:
 	UFUNCTION(BlueprintCallable)
 	bool SpawnWeapon(TSubclassOf<AWeaponBase> WeaponToSpawn, bool& bIsSuccessful);
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-	AWeaponBase* CurrentWeapon;
+	UFUNCTION(BlueprintCallable)
+	FString GetWeaponSlot_01_Name();
+
+	UFUNCTION(BlueprintCallable)
+	FString GetWeaponSlot_02_Name();
 
 	FORCEINLINE UCameraComponent* GetCamera() { return Camera; }
+	FORCEINLINE int GetCurrentHealth() { return CurrentHealth; }
+	FORCEINLINE int GetMaxHealth() { return MaxHealth; }
+	FORCEINLINE AWeaponBase* GetCurrentWeapon() { return CurrentWeapon; }
+	FORCEINLINE AWeaponBase* GetWeaponSlot_01() { return WeaponSlot_01; }
+	FORCEINLINE AWeaponBase* GetWeaponSlot_02() { return WeaponSlot_02; }
+
 	FORCEINLINE void SetIsReloading(bool IsReloading) { bIsReloading = IsReloading; }
 	FORCEINLINE void SetCanFire(bool CanFire) { bCanFire = CanFire; }
+	FORCEINLINE void SetHealth(int Health) { CurrentHealth += Health; CurrentHealth = FMath::Clamp(CurrentHealth, 0, MaxHealth); }
+	FORCEINLINE void SetHealthFull() { CurrentHealth = MaxHealth; }
 
 protected:
 	// Called when the game starts or when spawned
@@ -95,6 +114,18 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void FireReleased();
 
+	UFUNCTION(BlueprintCallable)
+	void RegenerateHealth();
+
+	UFUNCTION(BlueprintCallable)
+	void SetFOV(float FOV);
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void PlayerDeath();
+
+	UFUNCTION(BlueprintCallable)
+	void Equip();
+
 public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lux")
@@ -104,8 +135,11 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	virtual void PlayerTakeDamage_Implementation(int Damage) override;
+
+	virtual APlayerCharacter* GetPlayerRef_Implementation() override;
 
 protected:
 
@@ -121,6 +155,15 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	TArray<class UAnimMontage*> ReloadMonatge;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+	AWeaponBase* WeaponSlot_01;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+	AWeaponBase* WeaponSlot_02;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float DefaultFOV;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lux")
 	float BaseTurnRate = 45.F;
 
@@ -130,56 +173,71 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
 	float BaseLookUpRate = 45.F;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Health)
+	float RegenerativeHealthRate;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Health)
+	int CurrentHealth;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Health)
+	int MaxHealth;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Armor)
+	int CurrentArmor;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Armor)
+	int MaxArmor;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Health)
+	bool bIsDead;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Weapon)
 	bool bIsFirstSlotFull;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Weapon)
 	bool bIsSecondSlotFull;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Weapon)
 	bool bIsThirdSlotFull;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Weapon)
 	bool bCanFire;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Weapon)
 	bool bCanReload;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Weapon)
+	bool bIsEmpty;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Weapon)
 	bool bCanSwitchWeapon;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Weapon)
 	bool bIsReloading;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Weapon)
 	bool bIsChangingWeapon;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Weapon)
 	bool bIsAiming;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Weapon)
+	bool bIsFirstSlotActive;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Weapon)
+	bool bIsSecondSlotActive;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Weapon)
+	bool bIsThirdSlotActive;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Health)
+	FTimerHandle RegenerateHealthTimer;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	bool bIsNearWall;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bIsFirstSlotActive;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bIsSecondSlotActive;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bIsThirdSlotActive;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	EHasWeapon HasWeaponEnum;
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	float defaultFOV;
-
+	UPROPERTY()
 	EWeaponSlot EWeaponSlotEnum;
-
-	AWeaponBase* WeaponSlot_01;
-
-	AWeaponBase* WeaponSlot_02;
 
 private:
 
@@ -196,7 +254,7 @@ private:
 	void StartSprint();
 	void StopSprint();
 	void Interact();
-	void Equip();
+	void DebugTakeDamage();
 	
 	float DefaultWalkSpeed;
 	float AnimTime;

@@ -5,16 +5,25 @@
 #include "Sandbox/Character/PlayerCharacter.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SceneComponent.h"
+#include "Sandbox/AI/AICharacter.h"
+#include "PhysicalMaterials/PhysicalMaterial.h"
+#include "UObject/Class.h"
+#include "Chaos/ChaosEngineInterface.h"
+#include "Sandbox/Actors/ImpactEffects/ImpactEffects.h"
+#include "Sandbox/Actors/Projectiles/ProjectileBase.h"
 
 // Sets default values
 AWeaponBase::AWeaponBase()
 {
 	WeaponMesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Weapon Mesh"));
 	WeaponMesh->SetCastShadow(false);
+	WeaponMesh->bReturnMaterialOnMove = true;
 	SetRootComponent(WeaponMesh);
 
 	RecoilIntensitity = 30.F;
 	BulletSpread = 500.F;
+	CriticalHitDamageModifier = 1.F;
+	KillImpulse = 10000.F;
 }
 
 // Called when the game starts or when spawned
@@ -22,16 +31,31 @@ void AWeaponBase::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	PlayerRef = Cast<APlayerCharacter>(UGameplayStatics::GetPlayerCharacter(GetWorld(), 0));
+	PlayerRef = IPlayerRef::Execute_GetPlayerRef(UGameplayStatics::GetPlayerPawn(GetWorld(), 0));
+
+	Character = IReferences::Execute_GetAICharacterRef(AAICharacter::StaticClass()->GetDefaultObject());
+}
+
+void AWeaponBase::SetCurrentTotalAmmo(int Ammo)
+{
+	CurrentTotalAmmo += Ammo;
+
+	CurrentTotalAmmo = FMath::Clamp(CurrentTotalAmmo, 0, MaxTotalAmmo);
 }
 
 void AWeaponBase::WeaponReload()
 {
-	int Temp = MaxMagAmmo - CurrentAmmo;
+	ReloadCurrentAmmo = MaxMagAmmo - CurrentAmmo;
 
-	CurrentTotalAmmo -= Temp;
+	CurrentTotalAmmo -= ReloadCurrentAmmo;
 
 	CurrentAmmo = UKismetMathLibrary::Min(MaxMagAmmo, CurrentTotalAmmo);
+
+	bShouldReload = false;
+
+	CurrentAmmo = FMath::Clamp(CurrentAmmo, 0, MaxTotalAmmo);
+
+	CurrentTotalAmmo = FMath::Clamp(CurrentTotalAmmo, 0, MaxTotalAmmo);
 }
 
 void AWeaponBase::WeaponFire(EFireType FireType)
@@ -40,7 +64,15 @@ void AWeaponBase::WeaponFire(EFireType FireType)
 
 	CurrentAmmo--;
 
-	FHitResult Hit;
+	if (CurrentAmmo <= LowAmmo)
+	{
+		bShouldReload = true;
+	}
+
+	else
+	{
+		bShouldReload = false;
+	}
 
 	FRotator Rotation;
 	FRotator TempRotator;
@@ -50,6 +82,10 @@ void AWeaponBase::WeaponFire(EFireType FireType)
 	FActorSpawnParameters SpawnInfo;
 	SpawnInfo.Owner = this;
 	SpawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	Impact = IReferences::Execute_GetImpactRef(AImpactEffects::StaticClass()->GetDefaultObject());
+
+	Projectile = IReferences::Execute_GetProjectileRef(AProjectileBase::StaticClass()->GetDefaultObject());
 
 	switch (FireType)
 	{
@@ -63,8 +99,11 @@ void AWeaponBase::WeaponFire(EFireType FireType)
 				{
 					CalculateShot(PlayerRef->GetCamera(), WeaponMesh, SocketName, Hit, Transform);
 
-					//GetWorld()->SpawnActor<AImpactEffects>(ImpactEffects, Transform, SpawnInfo);
-
+					if (Impact != nullptr)
+					{
+						Impact = GetWorld()->SpawnActor<AImpactEffects>(ImpactEffects, Transform, SpawnInfo);
+					}
+		
 					AddDamage(Hit);
 				}
 
@@ -78,14 +117,18 @@ void AWeaponBase::WeaponFire(EFireType FireType)
 			{
 				CalculateShot(PlayerRef->GetCamera(), WeaponMesh, SocketName, Hit, Transform);
 
-				//GetWorld()->SpawnActor<AImpactEffects>(ImpactEffects, Transform, SpawnInfo);
+				if(IsValid(Impact))
+				{
+					Impact->SetHitResult(Hit);
+
+					Impact->bIsUsingHitResult = Hit.bBlockingHit;
+				}
+
+				Impact = GetWorld()->SpawnActor<AImpactEffects>(ImpactEffects, Transform, SpawnInfo);
+
+				GEngine->AddOnScreenDebugMessage(-1, 6.F, FColor::Purple, Impact->GetName());
 
 				AddDamage(Hit);
-
-				if (bIsAutomatic == true)
-				{
-					AutomaticRecoil();
-				}
 			}
 
 		}
@@ -96,12 +139,7 @@ void AWeaponBase::WeaponFire(EFireType FireType)
 
 		CalculateShot(PlayerRef->GetCamera(), WeaponMesh, "Fire_FX_Slot", Hit, Transform);
 
-		//GetWorld()->SpawnActor<AProjectileBase>(Projectile, Transform, SpawnInfo);
-
-		if (bIsAutomatic == true)
-		{
-			AutomaticRecoil();
-		}
+		Projectile = GetWorld()->SpawnActor<AProjectileBase>(SpawnProjectile, Transform, SpawnInfo);
 
 		break;
 
@@ -120,7 +158,7 @@ void AWeaponBase::CalculateShot(class UCameraComponent* Camera, class USceneComp
 	UCameraComponent* LocalCameraComponent = Camera;
 	USceneComponent* LocalWeaponMesh = WMesh;
 	FName LocalSocketName = WeaponFireSocketName;
-	FHitResult Hit = HitResult;
+	FHitResult LocalHitResult = HitResult;
 	FTransform LocalTransform;
 
 	FVector StartLocation;
@@ -168,10 +206,10 @@ void AWeaponBase::CalculateShot(class UCameraComponent* Camera, class USceneComp
 
 	FVector Scale(1.F, 1.F, 1.F);
 
-	if (UKismetSystemLibrary::LineTraceSingleForObjects(GetWorld(), StartLocation, EndVector, TraceObjects, true, ActorsToIgnore, EDrawDebugTrace::Persistent, Hit, true) == true)
+	if (UKismetSystemLibrary::LineTraceSingleForObjects(GetWorld(), StartLocation, EndVector, TraceObjects, true, ActorsToIgnore, EDrawDebugTrace::None, LocalHitResult, true) == true)
 	{
 		FRotator TempRotator;
-		TempRotator = UKismetMathLibrary::FindLookAtRotation(SocketLocation, Hit.ImpactPoint);
+		TempRotator = UKismetMathLibrary::FindLookAtRotation(SocketLocation, LocalHitResult.ImpactPoint);
 
 		LocalTransform = UKismetMathLibrary::MakeTransform(SocketLocation, TempRotator, Scale);
 	}
@@ -189,14 +227,27 @@ void AWeaponBase::CalculateShot(class UCameraComponent* Camera, class USceneComp
 		LocalTransform = UKismetMathLibrary::MakeTransform(SocketLocation, TempRotator, Scale);
 	}
 
-	HitResult = Hit;
+	HitResult = LocalHitResult;
 
 	ProjectileTransform = LocalTransform;
 }
 
 void AWeaponBase::AddDamage(FHitResult HitResult)
 {
-	//IINT_TakeDamage::TakeDamage(AmmoData, 0.F, CriticalHitDamageModifier, HitResult);
+	ITake_Damage* iTemp = Cast<ITake_Damage>(Character);
+
+	AActor* TempActor = HitResult.Actor.Get();
+
+	if (iTemp != nullptr)
+	{
+		if (TempActor != nullptr)
+		{
+			if (TempActor->GetClass()->ImplementsInterface(UTake_Damage::StaticClass()))
+			{
+				iTemp->Execute_Take_Damage(TempActor, AmmoData, CriticalHitDamageModifier, HitResult);
+			}
+		}
+	}
 }
 
 bool AWeaponBase::HasAmmoInMag()
@@ -222,6 +273,16 @@ bool AWeaponBase::HasExtraAmmo()
 bool AWeaponBase::HasFullMag()
 {
 	if (CurrentAmmo == MaxMagAmmo)
+	{
+		return true;
+	}
+
+	return false;
+}
+
+bool AWeaponBase::IsAmmoFull()
+{
+	if (CurrentTotalAmmo == MaxTotalAmmo)
 	{
 		return true;
 	}

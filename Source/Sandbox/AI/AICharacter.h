@@ -7,9 +7,9 @@
 #include "Sandbox/Interfaces/References.h"
 #include "AICharacter.generated.h"
 
-enum EAmmo : uint8 { PistolAmmoPickup, RifleAmmoPickup, ShotgunAmmoPickup };
+enum EAmmoPickup : uint8 { PistolAmmoPickup, RifleAmmoPickup, ShotgunAmmoPickup };
 
-enum EHealth : uint8 { SmallHealthPickup, MediumHealthPickup, LargeHealthPickup };
+enum EHealthPickup : uint8 { SmallHealthPickup, MediumHealthPickup, LargeHealthPickup };
 
 UCLASS()
 class SANDBOX_API AAICharacter : public ACharacter, public ITake_Damage, public IPlayerRef, public IReferences
@@ -51,6 +51,12 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	class APickupBase* HealthPickup;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	class APickupBase* WeaponPickup;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Pickup)
+	TArray<TSubclassOf<class APickupBase>> WeaponArray;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Pickup)
 	TArray<TSubclassOf<class APickupBase>> AmmoArray;
 
@@ -72,6 +78,9 @@ protected:
 
 	UFUNCTION(BlueprintCallable)
 	void OnDeathSpawnAmmo();
+
+	UFUNCTION(BlueprintCallable)
+	void OnDeathSpawnWeapon();
 
 	virtual void BeginPlay() override;
 };

@@ -62,6 +62,9 @@ protected:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName PickupName;
 
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	class UMaterialInstance* Icon;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Weapon)
 	TSubclassOf<class AWeaponBase> Weapon;
 

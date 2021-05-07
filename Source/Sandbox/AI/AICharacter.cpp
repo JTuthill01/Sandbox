@@ -10,6 +10,8 @@
 // Sets default values
 AAICharacter::AAICharacter()
 {
+	GetMesh()->bReturnMaterialOnMove = true;
+
 	MaxHealth = 100.F;
 	CurrentHealth = MaxHealth;
 
@@ -84,6 +86,8 @@ void AAICharacter::Dead(FVector ImpactPoint, FName BoneName)
 
 	OnDeathSpawnAmmo();
 
+	OnDeathSpawnWeapon();
+
 	GetMesh()->SetSimulatePhysics(true);
 
 	GetMesh()->AddImpulseAtLocation(TempImpulseLocation, ImpactPoint, BoneName);
@@ -103,11 +107,11 @@ void AAICharacter::OnDeathSpawnHealth()
 
 	HealthPickupChance = FMath::RandRange(0, 150);
 
-	for (size_t i = 0; i < HealthArray.Num(); i++)
+	for (size_t i = 0; i < HealthArray.Num(); ++i)
 	{
 		if (HealthPickupChance < 35)
 		{
-			HealthPickup = GetWorld()->SpawnActor<APickupBase>(HealthArray[EHealth::SmallHealthPickup], TempAILocation, TempRotator, Params);
+			HealthPickup = GetWorld()->SpawnActor<APickupBase>(HealthArray[EHealthPickup::SmallHealthPickup], TempAILocation, TempRotator, Params);
 
 			if (IsValid(HealthPickup))
 			{
@@ -130,7 +134,7 @@ void AAICharacter::OnDeathSpawnHealth()
 
 		else if (HealthPickupChance < 25)
 		{
-			HealthPickup = GetWorld()->SpawnActor<APickupBase>(HealthArray[EHealth::MediumHealthPickup], TempAILocation, TempRotator, Params);
+			HealthPickup = GetWorld()->SpawnActor<APickupBase>(HealthArray[EHealthPickup::MediumHealthPickup], TempAILocation, TempRotator, Params);
 
 			if (IsValid(HealthPickup))
 			{
@@ -153,7 +157,7 @@ void AAICharacter::OnDeathSpawnHealth()
 
 		else if (HealthPickupChance < 15)
 		{
-			HealthPickup = GetWorld()->SpawnActor<APickupBase>(HealthArray[EHealth::LargeHealthPickup], TempAILocation, TempRotator, Params);
+			HealthPickup = GetWorld()->SpawnActor<APickupBase>(HealthArray[EHealthPickup::LargeHealthPickup], TempAILocation, TempRotator, Params);
 
 			if (IsValid(HealthPickup))
 			{
@@ -194,7 +198,7 @@ void AAICharacter::OnDeathSpawnAmmo()
 
 		if (AmmoPickupChance > 60)
 		{
-			AmmoPickup = GetWorld()->SpawnActor<APickupBase>(AmmoArray[EAmmo::PistolAmmoPickup], TempAILocation, TempRotator, Params);
+			AmmoPickup = GetWorld()->SpawnActor<APickupBase>(AmmoArray[EAmmoPickup::PistolAmmoPickup], TempAILocation, TempRotator, Params);
 
 			if (IsValid(AmmoPickup))
 			{
@@ -209,7 +213,7 @@ void AAICharacter::OnDeathSpawnAmmo()
 
 		else if (AmmoPickupChance > 50)
 		{
-			AmmoPickup = GetWorld()->SpawnActor<APickupBase>(AmmoArray[EAmmo::RifleAmmoPickup], TempAILocation, TempRotator, Params);
+			AmmoPickup = GetWorld()->SpawnActor<APickupBase>(AmmoArray[EAmmoPickup::RifleAmmoPickup], TempAILocation, TempRotator, Params);
 
 			if (IsValid(AmmoPickup))
 			{
@@ -224,7 +228,7 @@ void AAICharacter::OnDeathSpawnAmmo()
 
 		else if (AmmoPickupChance > 40)
 		{
-			AmmoPickup = GetWorld()->SpawnActor<APickupBase>(AmmoArray[EAmmo::ShotgunAmmoPickup], TempAILocation, TempRotator, Params);
+			AmmoPickup = GetWorld()->SpawnActor<APickupBase>(AmmoArray[EAmmoPickup::ShotgunAmmoPickup], TempAILocation, TempRotator, Params);
 
 			if (IsValid(AmmoPickup))
 			{
@@ -236,6 +240,25 @@ void AAICharacter::OnDeathSpawnAmmo()
 				AmmoPickup->SetIsAmmoSuccessful(false);
 			}
 		}
+	}
+}
+
+void AAICharacter::OnDeathSpawnWeapon()
+{
+	FActorSpawnParameters Params;
+	Params.Owner = this;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	FVector TempAILocation = GetMesh()->GetComponentLocation();
+
+	FRotator TempRotator = GetMesh()->GetComponentRotation();
+
+	uint8 WeaponSpawnChance = FMath::RandRange(0, 100);
+	uint8 WeaponToSpawn = FMath::RandRange(0, 10);
+
+	if (WeaponSpawnChance > 30)
+	{
+		WeaponPickup = GetWorld()->SpawnActor<APickupBase>(WeaponArray[WeaponToSpawn], TempAILocation, TempRotator, Params);
 	}
 }
 

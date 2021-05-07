@@ -78,5 +78,5 @@ protected:
 	void DealDamage(const FHitResult& HitResult);
 
 	UFUNCTION()
-	void SpawnImpact(FHitResult HitResult);
+	void SpawnImpact(const FHitResult& HitResult);
 };

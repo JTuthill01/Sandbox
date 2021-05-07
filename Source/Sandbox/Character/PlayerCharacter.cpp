@@ -9,6 +9,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "Math/UnrealMathUtility.h"
 #include "Kismet/KismetStringLibrary.h"
+#include "Sandbox/Interfaces/References.h"
+#include "Sandbox/Pickups/PickupBase.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -48,7 +50,7 @@ void APlayerCharacter::BeginPlay()
 	
 	DefaultWalkSpeed = GetCharacterMovement()->MaxWalkSpeed;
 
-	CurrentWeapon = Cast<AWeaponBase>(AWeaponBase::StaticClass()->GetDefaultObject());
+	CurrentWeapon = IReferences::Execute_GetWeaponRef(AWeaponBase::StaticClass()->GetDefaultObject());
 }
 
 // Called every frame
@@ -77,6 +79,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	PlayerInputComponent->BindAction(TEXT("Fire"), IE_Pressed, this, &APlayerCharacter::FirePressed);
 	PlayerInputComponent->BindAction(TEXT("Fire"), IE_Released, this, &APlayerCharacter::FireReleased);
 	PlayerInputComponent->BindAction(TEXT("Interact"), IE_Pressed, this, &APlayerCharacter::Interact);
+	PlayerInputComponent->BindAction(TEXT("Interact"), IE_Released, this, &APlayerCharacter::SpawnPickup);
 	PlayerInputComponent->BindAction(TEXT("Reload"), IE_Pressed, this, &APlayerCharacter::Reload);
 	PlayerInputComponent->BindAction(TEXT("Damage"), IE_Pressed, this, &APlayerCharacter::DebugTakeDamage);
 	PlayerInputComponent->BindAction(TEXT("ADS"), IE_Pressed, this, &APlayerCharacter::FOnAimEnter);
@@ -135,7 +138,7 @@ void APlayerCharacter::ShowWeapon(AWeaponBase* Weapon)
 	}
 }
 
-bool APlayerCharacter::SpawnWeapon(TSubclassOf<AWeaponBase > WeaponToSpawn, bool& bIsSuccessful)
+void APlayerCharacter::SpawnWeapon(TSubclassOf<AWeaponBase > WeaponToSpawn, bool& bIsSuccessful)
 {
 	FActorSpawnParameters Params;
 	Params.Owner = this;
@@ -211,7 +214,7 @@ bool APlayerCharacter::SpawnWeapon(TSubclassOf<AWeaponBase > WeaponToSpawn, bool
 
 				bIsSecondSlotActive = true;
 
-				bIsFirstSlotActive = false;
+				bIsFirstSlotActive = false;				
 			}
 		}
 
@@ -235,8 +238,6 @@ bool APlayerCharacter::SpawnWeapon(TSubclassOf<AWeaponBase > WeaponToSpawn, bool
 	default:
 		break;
 	}
-
-	return bIsSuccessful;
 }
 
 void APlayerCharacter::Fire()
@@ -250,6 +251,8 @@ void APlayerCharacter::Fire()
 			OnFireWeapon.Broadcast(CurrentWeapon->WeaponType);
 
 			FireAnimationToPlay();
+
+			bIsFiring = true;
 		}
 
 		else if (CurrentWeapon->HasAmmoInMag() == false)
@@ -268,6 +271,61 @@ void APlayerCharacter::Fire()
 	if (CurrentWeapon->GetCurrentTotalAmmo() <= 0)
 	{
 		bIsEmpty = true;
+	}
+}
+
+void APlayerCharacter::SwapWeapon(TSubclassOf<AWeaponBase> WeaponToSpawn, bool& IsSuccessful)
+{
+	if (IsValid(CurrentWeapon))
+	{
+		if (bIsReloading == false && bIsFiring == false && bIsChangingWeapon == false)
+		{
+			if (CurrentWeapon == WeaponSlot_01)
+			{
+				PickupIndex = static_cast<int32>(WeaponSlot_01->WeaponType);
+
+				CurrentWeapon->Destroy();
+
+				CurrentWeapon = WeaponSlot_02;
+
+				bIsFirstSlotFull = false;
+
+				WeaponSlot_01 = nullptr;
+
+				SpawnWeapon(WeaponToSpawn, IsSuccessful);
+			}
+
+			else if (CurrentWeapon == WeaponSlot_02)
+			{
+				PickupIndex = static_cast<int32>(WeaponSlot_02->WeaponType);
+
+				CurrentWeapon->Destroy();
+
+				CurrentWeapon = WeaponSlot_01;
+
+				bIsSecondSlotFull = false;
+
+				WeaponSlot_02 = nullptr;
+
+				SpawnWeapon(WeaponToSpawn, IsSuccessful);
+			}
+		}
+	}
+}
+
+void APlayerCharacter::SpawnPickup()
+{
+	FActorSpawnParameters Params;
+	Params.Owner = this;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	FVector LocationVector = Arms->GetComponentLocation();
+
+	FRotator LocationRotator = Arms->GetComponentRotation();
+
+	if (bShouldSpawnPickup == true)
+	{
+		Pickup = GetWorld()->SpawnActor<APickupBase>(WeaponPickup[PickupIndex], LocationVector, LocationRotator, Params);
 	}
 }
 
@@ -393,14 +451,17 @@ void APlayerCharacter::Equip()
 	}
 }
 
-FString APlayerCharacter::GetWeaponSlot_01_Name()
+void APlayerCharacter::CanSwitchWeapon(bool& CanSwitch)
 {
-	return WeaponSlot_01->GetName();
-}
+	if (bIsFirstSlotFull == true && bIsSecondSlotFull == true)
+	{
+		CanSwitch = true;
+	}
 
-FString APlayerCharacter::GetWeaponSlot_02_Name()
-{
-	return WeaponSlot_02->GetName();
+	else
+	{
+		CanSwitch = false;
+	}
 }
 
 void APlayerCharacter::DebugTakeDamage()
@@ -418,9 +479,6 @@ void APlayerCharacter::FirePressed()
 	switch (HasWeaponEnum)
 	{
 	case EHasWeapon::NoWeapon:
-
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("No Weapon!!!!!!"));
-
 		break;
 
 	case EHasWeapon::HasWeapon:
@@ -439,9 +497,6 @@ void APlayerCharacter::FireReleased()
 	switch (HasWeaponEnum)
 	{
 	case EHasWeapon::NoWeapon:
-
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("No Weapon!!!!!!"));
-
 		break;
 
 	case EHasWeapon::HasWeapon:
@@ -461,7 +516,7 @@ void APlayerCharacter::RegenerateHealth()
 	{
 		float Temp = RegenerativeHealthRate / 6.F;
 
-		CurrentHealth = FMath::Clamp(CurrentHealth + (int)Temp, 0, MaxHealth);
+		CurrentHealth = FMath::Clamp(CurrentHealth + static_cast<int>(Temp), 0, MaxHealth);
 
 		if (CurrentHealth >= MaxHealth)
 		{
@@ -490,170 +545,19 @@ void APlayerCharacter::StopFire()
 	CurrentWeapon->StopFire();
 
 	OnStopFire.Broadcast();
+
+	bIsFiring = false;
 }
 
 void APlayerCharacter::FireAnimationToPlay()
 {
 	UAnimInstance* Instance = Arms->GetAnimInstance();
 
-	switch (CurrentWeapon->WeaponType)
+	int32 WeaponIndex = static_cast<int32>(CurrentWeapon->WeaponType);
+
+	if (FireMonatge.IsValidIndex(WeaponIndex))
 	{
-	case EWeaponType::TT38:
-		
-		if (FireMonatge.IsValidIndex(EFireMontageToPlay::F_TT38))
-		{
-			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_TT38]);
-		}
-
-		else
-		{
-			break;
-		}
-
-		break;
-
-	case EWeaponType::ShortStrokeAR:
-
-		if (FireMonatge.IsValidIndex(EFireMontageToPlay::F_ShortStrokeAR))
-		{
-			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_ShortStrokeAR]);
-		}
-
-		else
-		{
-			break;
-		}
-
-		break;
-
-	case EWeaponType::AmericanShotgun:
-
-		if (FireMonatge.IsValidIndex(EFireMontageToPlay::F_AmericanShotgun))
-		{
-			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_AmericanShotgun]);
-		}
-
-		else
-		{
-			break;
-		}
-
-		break;
-
-	case EWeaponType::Bulldog:
-
-		if (FireMonatge.IsValidIndex(EFireMontageToPlay::F_Bulldog))
-		{
-			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_Bulldog]);
-		}
-
-		else
-		{
-			break;
-		}
-
-		break;
-
-	case EWeaponType::L86:
-
-		if (FireMonatge.IsValidIndex(EFireMontageToPlay::F_L86))
-		{
-			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_L86]);
-		}
-
-		else
-		{
-			break;
-		}
-
-		break;
-
-	case EWeaponType::HandCannon:
-
-		if (FireMonatge.IsValidIndex(EFireMontageToPlay::F_HandCannon))
-		{
-			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_HandCannon]);
-		}
-
-		else
-		{
-			break;
-		}
-
-		break;
-
-	case EWeaponType::AK47:
-
-		if (FireMonatge.IsValidIndex(EFireMontageToPlay::F_AK47))
-		{
-			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_AK47]);
-		}
-
-		else
-		{
-			break;
-		}
-
-		break;
-
-	case EWeaponType::SMG:
-
-		if (FireMonatge.IsValidIndex(EFireMontageToPlay::F_SMG))
-		{
-			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_SMG]);
-		}
-
-		else
-		{
-			break;
-		}
-
-		break;
-
-	case EWeaponType::BelgianAR:
-
-		if (FireMonatge.IsValidIndex(EFireMontageToPlay::F_BelgianAR))
-		{
-			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_BelgianAR]);
-		}
-
-		else
-		{
-			break;
-		}
-
-		break;
-
-	case EWeaponType::SKS:
-
-		if (FireMonatge.IsValidIndex(EFireMontageToPlay::F_SKS))
-		{
-			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_SKS]);
-		}
-
-		else
-		{
-			break;
-		}
-
-		break;
-
-	case EWeaponType::XM82:
-
-		if (FireMonatge.IsValidIndex(EFireMontageToPlay::F_XM82))
-		{
-			Instance->Montage_Play(FireMonatge[EFireMontageToPlay::F_XM82]);
-		}
-
-		else
-		{
-			break;
-		}
-
-		break;
-
-	default:
-		break;
+		Instance->Montage_Play(FireMonatge[WeaponIndex]);
 	}
 }
 
@@ -661,109 +565,24 @@ void APlayerCharacter::ReloadAnimationToPlay()
 {
 	UAnimInstance* Instance = Arms->GetAnimInstance();
 
-	switch (CurrentWeapon->WeaponType)
+	int32 WeaponIndex = static_cast<int32>(CurrentWeapon->WeaponType);
+
+	if (ReloadMonatge.IsValidIndex(WeaponIndex))
 	{
-	case EWeaponType::TT38:
+		Instance->Montage_Play(ReloadMonatge[WeaponIndex]);
+	}
+}
 
-		if (ReloadMonatge.IsValidIndex(EReloadMontageToPlay::R_TT38))
-		{
-			Instance->Montage_Play(ReloadMonatge[EReloadMontageToPlay::R_TT38]);
-		}
+void APlayerCharacter::CurrentWeaponName(FName& NameOfWeapon)
+{
+	if (CurrentWeapon == WeaponSlot_01)
+	{
+		NameOfWeapon = WeaponSlot_01->GetWeaponName();
+	}
 
-		break;
-
-	case EWeaponType::ShortStrokeAR:
-
-		if (ReloadMonatge.IsValidIndex(EReloadMontageToPlay::R_ShortStrokeAR))
-		{
-			Instance->Montage_Play(ReloadMonatge[EReloadMontageToPlay::R_ShortStrokeAR]);
-		}
-
-		break;
-
-	case EWeaponType::AmericanShotgun:
-
-		if (ReloadMonatge.IsValidIndex(EReloadMontageToPlay::R_AmericanShotgun))
-		{
-			Instance->Montage_Play(ReloadMonatge[EReloadMontageToPlay::R_AmericanShotgun]);
-		}
-
-		break;
-
-	case EWeaponType::Bulldog:
-
-		if (ReloadMonatge.IsValidIndex(EReloadMontageToPlay::R_Bulldog))
-		{
-			Instance->Montage_Play(ReloadMonatge[EReloadMontageToPlay::R_Bulldog]);
-		}
-
-		break;
-
-	case EWeaponType::L86:
-
-		if (ReloadMonatge.IsValidIndex(EReloadMontageToPlay::R_L86))
-		{
-			Instance->Montage_Play(ReloadMonatge[EReloadMontageToPlay::R_L86]);
-		}
-
-		break;
-
-	case EWeaponType::HandCannon:
-
-		if (ReloadMonatge.IsValidIndex(EReloadMontageToPlay::R_HandCannon))
-		{
-			Instance->Montage_Play(ReloadMonatge[EReloadMontageToPlay::R_HandCannon]);
-		}
-
-		break;
-
-	case EWeaponType::AK47:
-
-		if (ReloadMonatge.IsValidIndex(EReloadMontageToPlay::R_AK47))
-		{
-			Instance->Montage_Play(ReloadMonatge[EReloadMontageToPlay::R_AK47]);
-		}
-
-		break;
-
-	case EWeaponType::SMG:
-
-		if (ReloadMonatge.IsValidIndex(EReloadMontageToPlay::R_SMG))
-		{
-			Instance->Montage_Play(ReloadMonatge[EReloadMontageToPlay::R_SMG]);
-		}
-
-		break;
-
-	case EWeaponType::BelgianAR:
-
-		if (ReloadMonatge.IsValidIndex(EReloadMontageToPlay::R_BelgianAR))
-		{
-			Instance->Montage_Play(ReloadMonatge[EReloadMontageToPlay::R_BelgianAR]);
-		}
-
-		break;
-
-	case EWeaponType::SKS:
-
-		if (ReloadMonatge.IsValidIndex(EReloadMontageToPlay::R_SKS))
-		{
-			Instance->Montage_Play(ReloadMonatge[EReloadMontageToPlay::R_SKS]);
-		}
-
-		break;
-
-	case EWeaponType::XM82:
-
-		if (ReloadMonatge.IsValidIndex(EReloadMontageToPlay::R_XM82))
-		{
-			Instance->Montage_Play(ReloadMonatge[EReloadMontageToPlay::R_XM82]);
-		}
-
-		break;
-
-	default:
-		break;
+	else if (CurrentWeapon == WeaponSlot_02)
+	{
+		NameOfWeapon = WeaponSlot_02->GetWeaponName();
 	}
 }
 

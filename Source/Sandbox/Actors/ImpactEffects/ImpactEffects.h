@@ -23,23 +23,22 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Default", Meta = (ExposeOnSpawn = true))
 	FHitResult HitResult;
 
-	UFUNCTION()
-	void SetHitResult(FHitResult Result);
-
 	virtual AImpactEffects* GetImpactRef_Implementation() override;
+
+	FORCEINLINE void SetHitResult(FHitResult Result) { HitResult = Result; }
 
 protected:
 	UFUNCTION()
-	void SetDecalRotation(FHitResult Hit);
+	void SetDecalRotation();
 
 	UFUNCTION()
-	void SpawnFX(FHitResult Hit);
+	void SpawnFX();
 
 	UFUNCTION()
-	void SpawnSound(FHitResult Hit);
+	void SpawnSound();
 
 	UFUNCTION()
-	void SpawnDecal(FHitResult Hit);
+	void SpawnDecal();
 
 protected:
 	// Called when the game starts or when spawned

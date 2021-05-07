@@ -25,4 +25,7 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	class AProjectileBase* GetProjectileRef();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	class AWeaponBase* GetWeaponRef();
 };

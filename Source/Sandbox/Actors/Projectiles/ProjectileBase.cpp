@@ -81,6 +81,7 @@ void AProjectileBase::ExplodeOnImpact(const FHitResult& HitResult)
 	TArray<AActor*> OutActors;
 
 	ActorsToIgnore.Add(PlayerRef->CurrentWeapon);
+	ActorsToIgnore.Add(this);
 
 	TraceObjects.Add(UEngineTypes::ConvertToObjectType(ECC_WorldDynamic));
 	TraceObjects.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
@@ -146,7 +147,7 @@ void AProjectileBase::DealDamage(const FHitResult& HitResult)
 	}
 }
 
-void AProjectileBase::SpawnImpact(FHitResult HitResult)
+void AProjectileBase::SpawnImpact(const FHitResult& HitResult)
 {
 	FTransform TempTransform = ProjectileMesh->GetComponentTransform();
 
@@ -154,16 +155,16 @@ void AProjectileBase::SpawnImpact(FHitResult HitResult)
 	SpawnInfo.Owner = this;
 	SpawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	Effect = IReferences::Execute_GetImpactRef(AImpactEffects::StaticClass()->GetDefaultObject());
-
-	if (IsValid(Effect))
+	if (HitResult.bBlockingHit == true)
 	{
-		Effect->bIsUsingHitResult = true;
+		Effect = GetWorld()->SpawnActorDeferred<AImpactEffects>(EffectToSpawn, TempTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 
 		Effect->SetHitResult(HitResult);
+
+		UGameplayStatics::FinishSpawningActor(Effect, TempTransform);
 	}
 
-	Effect = GetWorld()->SpawnActor<AImpactEffects>(EffectToSpawn, TempTransform, SpawnInfo);
+	GEngine->AddOnScreenDebugMessage(-1, 6.F, FColor::Purple, HitResult.GetActor()->GetName());
 }
 
 AProjectileBase* AProjectileBase::GetProjectileRef_Implementation() { return this; }

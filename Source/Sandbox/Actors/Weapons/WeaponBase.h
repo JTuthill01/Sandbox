@@ -35,7 +35,7 @@ public:
 };
 
 UCLASS()
-class SANDBOX_API AWeaponBase : public AActor, public IPlayerRef
+class SANDBOX_API AWeaponBase : public AActor, public IPlayerRef, public IReferences
 {	
 	GENERATED_BODY()
 	
@@ -43,8 +43,11 @@ public:
 	// Sets default values for this actor's properties
 	AWeaponBase();
 
+	FORCEINLINE USkeletalMeshComponent* GetWeaponMesh() { return WeaponMesh; }
 	FORCEINLINE UMaterialInstance* GetIcon() { return Icon; }
 	FORCEINLINE FName GetSocketName() const { return SocketName; }
+	FORCEINLINE FName GetWeaponName() const { return WeaponName; }
+	FORCEINLINE FHitResult GetHitResult() { return Hit; }
 
 	FORCEINLINE bool GetIsAiming() const { return bIsAiming; }
 	FORCEINLINE int GetTotalMaxAmmo() const { return MaxTotalAmmo; }
@@ -55,6 +58,7 @@ public:
 	FORCEINLINE void SetCurrentAmmo(int Ammo) { CurrentAmmo = Ammo; }
 	FORCEINLINE void SetShouldReload(bool Reload) { bShouldReload = Reload; }
 
+public:
 	UFUNCTION(BlueprintCallable)
 	void SetCurrentTotalAmmo(int Ammo);
 
@@ -82,6 +86,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void AddDamage(FHitResult HitResult);
 
+	virtual AWeaponBase* GetWeaponRef_Implementation() override;
+
+public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Enums)
 	EWeaponType WeaponType;
 
@@ -122,6 +129,9 @@ protected:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FName SocketName;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	FName WeaponName;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Animation)
 	class UAnimInstance* WeaponFireAnim;

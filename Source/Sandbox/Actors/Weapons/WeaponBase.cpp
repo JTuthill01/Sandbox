@@ -34,6 +34,8 @@ void AWeaponBase::BeginPlay()
 	PlayerRef = IPlayerRef::Execute_GetPlayerRef(UGameplayStatics::GetPlayerPawn(GetWorld(), 0));
 
 	Character = IReferences::Execute_GetAICharacterRef(AAICharacter::StaticClass()->GetDefaultObject());
+
+	Projectile = IReferences::Execute_GetProjectileRef(AProjectileBase::StaticClass()->GetDefaultObject());
 }
 
 void AWeaponBase::SetCurrentTotalAmmo(int Ammo)
@@ -74,18 +76,18 @@ void AWeaponBase::WeaponFire(EFireType FireType)
 		bShouldReload = false;
 	}
 
+	FVector Scale = FVector(2.F, 2.F, 2.F);
+
 	FRotator Rotation;
 	FRotator TempRotator;
 
 	FTransform Transform;
+	FTransform LocalTransform;
+	FTransform ProjectileTransform;
 
 	FActorSpawnParameters SpawnInfo;
 	SpawnInfo.Owner = this;
 	SpawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-	Impact = IReferences::Execute_GetImpactRef(AImpactEffects::StaticClass()->GetDefaultObject());
-
-	Projectile = IReferences::Execute_GetProjectileRef(AProjectileBase::StaticClass()->GetDefaultObject());
 
 	switch (FireType)
 	{
@@ -117,16 +119,13 @@ void AWeaponBase::WeaponFire(EFireType FireType)
 			{
 				CalculateShot(PlayerRef->GetCamera(), WeaponMesh, SocketName, Hit, Transform);
 
-				if(IsValid(Impact))
-				{
-					Impact->SetHitResult(Hit);
+				LocalTransform = UKismetMathLibrary::MakeTransform(Hit.Location, TempRotator, Scale);
 
-					Impact->bIsUsingHitResult = Hit.bBlockingHit;
-				}
+				AImpactEffects* TempImpact = GetWorld()->SpawnActorDeferred<AImpactEffects>(ImpactEffects, LocalTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 
-				Impact = GetWorld()->SpawnActor<AImpactEffects>(ImpactEffects, Transform, SpawnInfo);
+				TempImpact->SetHitResult(Hit);
 
-				GEngine->AddOnScreenDebugMessage(-1, 6.F, FColor::Purple, Impact->GetName());
+				UGameplayStatics::FinishSpawningActor(TempImpact, LocalTransform);
 
 				AddDamage(Hit);
 			}
@@ -139,7 +138,9 @@ void AWeaponBase::WeaponFire(EFireType FireType)
 
 		CalculateShot(PlayerRef->GetCamera(), WeaponMesh, "Fire_FX_Slot", Hit, Transform);
 
-		Projectile = GetWorld()->SpawnActor<AProjectileBase>(SpawnProjectile, Transform, SpawnInfo);
+		ProjectileTransform = UKismetMathLibrary::MakeTransform(Hit.Location, TempRotator, Scale);
+
+		Projectile = GetWorld()->SpawnActor<AProjectileBase>(SpawnProjectile, ProjectileTransform, SpawnInfo);
 
 		break;
 
@@ -199,6 +200,8 @@ void AWeaponBase::CalculateShot(class UCameraComponent* Camera, class USceneComp
 	TArray<TEnumAsByte<EObjectTypeQuery>> TraceObjects;
 	TArray<AActor*> ActorsToIgnore;
 	ActorsToIgnore.Add(UGameplayStatics::GetPlayerController(PlayerRef, 0));
+	ActorsToIgnore.Add(this);
+
 	TraceObjects.Add(UEngineTypes::ConvertToObjectType(ECC_WorldStatic));
 	TraceObjects.Add(UEngineTypes::ConvertToObjectType(ECC_WorldDynamic));
 
@@ -289,6 +292,8 @@ bool AWeaponBase::IsAmmoFull()
 
 	return false;
 }
+
+AWeaponBase* AWeaponBase::GetWeaponRef_Implementation(){ return this; }
 
 void AWeaponBase::AutomaticRecoil_Implementation() {}
 

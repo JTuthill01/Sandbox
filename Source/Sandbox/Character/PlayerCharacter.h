@@ -19,10 +19,6 @@ enum class EHasWeapon : uint8 { NoWeapon, HasWeapon };
 UENUM(BlueprintType)
 enum class EWeaponSlot : uint8 { First_Slot, Second_Slot, Third_Slot };
 
-enum EFireMontageToPlay : uint8 { F_TT38, F_ShortStrokeAR, F_AmericanShotgun, F_Bulldog, F_L86, F_HandCannon, F_AK47, F_SMG, F_BelgianAR, F_SKS, F_XM82 };
-
-enum EReloadMontageToPlay : uint8 { R_TT38, R_ShortStrokeAR, R_AmericanShotgun, R_Bulldog, R_L86, R_HandCannon, R_AK47, R_SMG, R_BelgianAR, R_SKS, R_XM82 };
-
 UCLASS()
 class SANDBOX_API APlayerCharacter : public ACharacter, public ITake_Damage, public IPlayerRef
 {
@@ -53,11 +49,21 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	AWeaponBase* CurrentWeapon;
 
+public:
 	UFUNCTION(BlueprintCallable)
 	bool IsHealthFull();
 
+	UFUNCTION(BlueprintCallable)
+	void SpawnWeapon(TSubclassOf<AWeaponBase> WeaponToSpawn, bool& IsSuccessful);
+
+	UFUNCTION(BlueprintCallable)
+	void SwapWeapon(TSubclassOf<AWeaponBase> WeaponToSpawn, bool& bIsSuccessful);
+
 	UFUNCTION(BlueprintPure)
 	void SetIconImage(UMaterialInstance*& Image);
+
+	UFUNCTION(BlueprintCallable)
+	void SpawnPickup();
 
 	UFUNCTION(BlueprintCallable)
 	void FOnAimEnter();
@@ -77,21 +83,16 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void ReloadAnimationToPlay();
 
-	UFUNCTION(BlueprintCallable)
-	bool SpawnWeapon(TSubclassOf<AWeaponBase> WeaponToSpawn, bool& bIsSuccessful);
-
-	UFUNCTION(BlueprintCallable)
-	FString GetWeaponSlot_01_Name();
-
-	UFUNCTION(BlueprintCallable)
-	FString GetWeaponSlot_02_Name();
+	UFUNCTION(BlueprintPure, BlueprintCallable)
+	void CurrentWeaponName(FName& NameOfWeapon);
 
 	FORCEINLINE UCameraComponent* GetCamera() { return Camera; }
-	FORCEINLINE int GetCurrentHealth() { return CurrentHealth; }
-	FORCEINLINE int GetMaxHealth() { return MaxHealth; }
 	FORCEINLINE AWeaponBase* GetCurrentWeapon() { return CurrentWeapon; }
 	FORCEINLINE AWeaponBase* GetWeaponSlot_01() { return WeaponSlot_01; }
 	FORCEINLINE AWeaponBase* GetWeaponSlot_02() { return WeaponSlot_02; }
+	FORCEINLINE EWeaponType GetWeaponType() { return CurrentWeaponType; }
+	FORCEINLINE int GetCurrentHealth() { return CurrentHealth; }
+	FORCEINLINE int GetMaxHealth() { return MaxHealth; }
 
 	FORCEINLINE void SetIsReloading(bool IsReloading) { bIsReloading = IsReloading; }
 	FORCEINLINE void SetCanFire(bool CanFire) { bCanFire = CanFire; }
@@ -125,6 +126,9 @@ protected:
 
 	UFUNCTION(BlueprintCallable)
 	void Equip();
+
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	void CanSwitchWeapon(bool& CanSwitch);
 
 public:
 
@@ -161,13 +165,28 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
 	AWeaponBase* WeaponSlot_02;
 
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup")
+	class APickupBase* Pickup;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup")
+	TArray< TSubclassOf<class APickupBase>> WeaponPickup;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup")
+	int32 PickupIndex;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup")
+	EWeaponType CurrentWeaponType;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup")
+	bool bShouldSpawnPickup;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FOV")
 	float DefaultFOV;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lux")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float BaseTurnRate = 45.F;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Lux")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float BaseLookRate = 45.F;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera")
@@ -199,6 +218,9 @@ protected:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Weapon)
 	bool bIsThirdSlotFull;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Weapon)
+	bool bIsFiring;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Weapon)
 	bool bCanFire;

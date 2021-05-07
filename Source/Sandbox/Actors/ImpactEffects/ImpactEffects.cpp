@@ -6,6 +6,7 @@
 #include "Chaos/ChaosEngineInterface.h"
 #include "Sound/SoundBase.h"
 #include "Materials/MaterialInterface.h"
+#include "Sandbox/Actors/Weapons/WeaponBase.h"
 
 // Sets default values
 AImpactEffects::AImpactEffects() = default;
@@ -16,26 +17,20 @@ AImpactEffects* AImpactEffects::GetImpactRef_Implementation() { return this; }
 void AImpactEffects::BeginPlay()
 {
 	Super::BeginPlay();
+
+	SetDecalRotation();
+
+	SpawnFX();
+
+	SpawnSound();
+
+	SpawnDecal();
 }
 
-void AImpactEffects::SetHitResult(FHitResult Result)
-{
-	if (Result.bBlockingHit == true)
-	{
-		SetDecalRotation(Result);
-
-		SpawnFX(Result);
-
-		SpawnSound(Result);
-
-		SpawnDecal(Result);
-	}
-}
-
-void AImpactEffects::SetDecalRotation(FHitResult Hit)
+void AImpactEffects::SetDecalRotation()
 {
 	FVector Normal;
-	Normal = Hit.Normal;
+	Normal = HitResult.Normal;
 	 
 	FRotator TempRotator;
 	TempRotator = UKismetMathLibrary::MakeRotFromX(Normal);
@@ -45,191 +40,189 @@ void AImpactEffects::SetDecalRotation(FHitResult Hit)
 	DecalRotation = UKismetMathLibrary::MakeRotator(TempFloat, TempRotator.Pitch, TempRotator.Yaw);
 }
 
-void AImpactEffects::SpawnFX(FHitResult Hit)
+void AImpactEffects::SpawnFX()
 {
 	FRotator Rotation(0.F);
 	FVector Scale(1.F);
 
-	if (Hit.PhysMaterial != nullptr)
+	if (HitResult.PhysMaterial != nullptr)
 	{
-		switch (Hit.PhysMaterial->SurfaceType)
+		switch (HitResult.PhysMaterial->SurfaceType)
 		{
 		case SurfaceType1:
 
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), DefaultFX, Hit.Location, Rotation, Scale);
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), DefaultFX, HitResult.Location, Rotation, Scale);
 
 			break;
 
 		case SurfaceType2:
 
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), FleshFX, Hit.Location, Rotation, Scale);
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), FleshFX, HitResult.Location, Rotation, Scale);
 
 			break;
 
 		case SurfaceType3:
 
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), FleshFX, Hit.Location, Rotation, Scale);
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), FleshFX, HitResult.Location, Rotation, Scale);
 
 			break;
 
 		case SurfaceType4:
 
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), FleshFX, Hit.Location, Rotation, Scale);
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), FleshFX, HitResult.Location, Rotation, Scale);
 
 			break;
 
 		case SurfaceType5:
 
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), FleshFX, Hit.Location, Rotation, Scale);
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), FleshFX, HitResult.Location, Rotation, Scale);
 
 			break;
 
 		case SurfaceType6:
 
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), FleshFX, Hit.Location, Rotation, Scale);
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), FleshFX, HitResult.Location, Rotation, Scale);
 
 			break;
 
 		case SurfaceType7:
 
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), FleshFX, Hit.Location, Rotation, Scale);
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), FleshFX, HitResult.Location, Rotation, Scale);
 
 			break;
 
 		case SurfaceType8:
 
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), FleshFX, Hit.Location, Rotation, Scale);
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), FleshFX, HitResult.Location, Rotation, Scale);
 
 			break;
 
 		default:
 
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), DefaultFX, Hit.Location, Rotation, Scale);
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), DefaultFX, HitResult.Location, Rotation, Scale);
 
 			break;
 		}
 	}
 }
 
-void AImpactEffects::SpawnSound(FHitResult Hit)
+void AImpactEffects::SpawnSound()
 {
-	if (Hit.bBlockingHit == true && Hit.PhysMaterial != nullptr)
+	if (HitResult.bBlockingHit == true && HitResult.PhysMaterial != nullptr)
 	{
-		switch (Hit.PhysMaterial->SurfaceType)
+		switch (HitResult.PhysMaterial->SurfaceType)
 		{
 		case SurfaceType1:
 
-			UGameplayStatics::PlaySoundAtLocation(GetWorld(), ConcreteSound, Hit.Location);
-
-			GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Purple, __FUNCTION__);
+			UGameplayStatics::PlaySoundAtLocation(GetWorld(), ConcreteSound, HitResult.Location);
 
 			break;
 
 		case SurfaceType2:
 
-			UGameplayStatics::PlaySoundAtLocation(GetWorld(), FleshSound, Hit.Location);
+			UGameplayStatics::PlaySoundAtLocation(GetWorld(), FleshSound, HitResult.Location);
 
 			break;
 
 		case SurfaceType3:
 
-			UGameplayStatics::PlaySoundAtLocation(GetWorld(), FleshSound, Hit.Location);
+			UGameplayStatics::PlaySoundAtLocation(GetWorld(), FleshSound, HitResult.Location);
 
 			break;
 
 		case SurfaceType4:
 
-			UGameplayStatics::PlaySoundAtLocation(GetWorld(), FleshSound, Hit.Location);
+			UGameplayStatics::PlaySoundAtLocation(GetWorld(), FleshSound, HitResult.Location);
 
 			break;
 
 		case SurfaceType5:
 
-			UGameplayStatics::PlaySoundAtLocation(GetWorld(), FleshSound, Hit.Location);
+			UGameplayStatics::PlaySoundAtLocation(GetWorld(), FleshSound, HitResult.Location);
 
 			break;
 
 		case SurfaceType6:
 
-			UGameplayStatics::PlaySoundAtLocation(GetWorld(), FleshSound, Hit.Location);
+			UGameplayStatics::PlaySoundAtLocation(GetWorld(), FleshSound, HitResult.Location);
 
 			break;
 
 		case SurfaceType7:
 
-			UGameplayStatics::PlaySoundAtLocation(GetWorld(), FleshSound, Hit.Location);
+			UGameplayStatics::PlaySoundAtLocation(GetWorld(), FleshSound, HitResult.Location);
 
 			break;
 
 		case SurfaceType8:
 
-			UGameplayStatics::PlaySoundAtLocation(GetWorld(), FleshSound, Hit.Location);
+			UGameplayStatics::PlaySoundAtLocation(GetWorld(), FleshSound, HitResult.Location);
 
 			break;
 
 		default:
 
-			UGameplayStatics::PlaySoundAtLocation(GetWorld(), DefaultSound, Hit.Location);
+			UGameplayStatics::PlaySoundAtLocation(GetWorld(), DefaultSound, HitResult.Location);
 
 			break;
 		}
 	}
 }
 
-void AImpactEffects::SpawnDecal(FHitResult Hit)
+void AImpactEffects::SpawnDecal()
 {
 	FVector DecalVector(DecalSize);
 
-	USceneComponent* TempComponent = Cast<USceneComponent>(Hit.Component);
+	USceneComponent* TempComponent = Cast<USceneComponent>(HitResult.Component);
 
-	if (Hit.bBlockingHit == true && Hit.PhysMaterial != nullptr)
+	if (HitResult.bBlockingHit == true && HitResult.PhysMaterial != nullptr)
 	{
-		switch (Hit.PhysMaterial->SurfaceType)
+		switch (HitResult.PhysMaterial->SurfaceType)
 		{
 		case SurfaceType1:
 			
-			UGameplayStatics::SpawnDecalAttached(ConcreteDecalMaterial, DecalVector, TempComponent, Hit.BoneName, Hit.ImpactPoint, DecalRotation, EAttachLocation::KeepWorldPosition, DecalLifeSpan);
+			UGameplayStatics::SpawnDecalAttached(ConcreteDecalMaterial, DecalVector, TempComponent, HitResult.BoneName, HitResult.ImpactPoint, DecalRotation, EAttachLocation::KeepWorldPosition, DecalLifeSpan);
 
 			break;
 		case SurfaceType2:
 
-			UGameplayStatics::SpawnDecalAttached(FleshDecalMaterial, DecalVector, TempComponent, Hit.BoneName, Hit.ImpactPoint, DecalRotation, EAttachLocation::KeepWorldPosition, DecalLifeSpan);
+			UGameplayStatics::SpawnDecalAttached(FleshDecalMaterial, DecalVector, TempComponent, HitResult.BoneName, HitResult.ImpactPoint, DecalRotation, EAttachLocation::KeepWorldPosition, DecalLifeSpan);
 
 			break;
 		case SurfaceType3:
 
-			UGameplayStatics::SpawnDecalAttached(FleshDecalMaterial, DecalVector, TempComponent, Hit.BoneName, Hit.ImpactPoint, DecalRotation, EAttachLocation::KeepWorldPosition, DecalLifeSpan);
+			UGameplayStatics::SpawnDecalAttached(FleshDecalMaterial, DecalVector, TempComponent, HitResult.BoneName, HitResult.ImpactPoint, DecalRotation, EAttachLocation::KeepWorldPosition, DecalLifeSpan);
 
 			break;
 		case SurfaceType4:
 
-			UGameplayStatics::SpawnDecalAttached(FleshDecalMaterial, DecalVector, TempComponent, Hit.BoneName, Hit.ImpactPoint, DecalRotation, EAttachLocation::KeepWorldPosition, DecalLifeSpan);
+			UGameplayStatics::SpawnDecalAttached(FleshDecalMaterial, DecalVector, TempComponent, HitResult.BoneName, HitResult.ImpactPoint, DecalRotation, EAttachLocation::KeepWorldPosition, DecalLifeSpan);
 
 			break;
 		case SurfaceType5:
 
-			UGameplayStatics::SpawnDecalAttached(FleshDecalMaterial, DecalVector, TempComponent, Hit.BoneName, Hit.ImpactPoint, DecalRotation, EAttachLocation::KeepWorldPosition, DecalLifeSpan);
+			UGameplayStatics::SpawnDecalAttached(FleshDecalMaterial, DecalVector, TempComponent, HitResult.BoneName, HitResult.ImpactPoint, DecalRotation, EAttachLocation::KeepWorldPosition, DecalLifeSpan);
 
 			break;
 		case SurfaceType6:
 
-			UGameplayStatics::SpawnDecalAttached(FleshDecalMaterial, DecalVector, TempComponent, Hit.BoneName, Hit.ImpactPoint, DecalRotation, EAttachLocation::KeepWorldPosition, DecalLifeSpan);
+			UGameplayStatics::SpawnDecalAttached(FleshDecalMaterial, DecalVector, TempComponent, HitResult.BoneName, HitResult.ImpactPoint, DecalRotation, EAttachLocation::KeepWorldPosition, DecalLifeSpan);
 
 			break;
 		case SurfaceType7:
 
-			UGameplayStatics::SpawnDecalAttached(FleshDecalMaterial, DecalVector, TempComponent, Hit.BoneName, Hit.ImpactPoint, DecalRotation, EAttachLocation::KeepWorldPosition, DecalLifeSpan);
+			UGameplayStatics::SpawnDecalAttached(FleshDecalMaterial, DecalVector, TempComponent, HitResult.BoneName, HitResult.ImpactPoint, DecalRotation, EAttachLocation::KeepWorldPosition, DecalLifeSpan);
 
 			break;
 		case SurfaceType8:
 
-			UGameplayStatics::SpawnDecalAttached(FleshDecalMaterial, DecalVector, TempComponent, Hit.BoneName, Hit.ImpactPoint, DecalRotation, EAttachLocation::KeepWorldPosition, DecalLifeSpan);
+			UGameplayStatics::SpawnDecalAttached(FleshDecalMaterial, DecalVector, TempComponent, HitResult.BoneName, HitResult.ImpactPoint, DecalRotation, EAttachLocation::KeepWorldPosition, DecalLifeSpan);
 
 			break;
 
 		default:
 
-			UGameplayStatics::SpawnDecalAttached(DefaultDecalMaterial, DecalVector, TempComponent, Hit.BoneName, Hit.ImpactPoint, DecalRotation, EAttachLocation::KeepWorldPosition, DecalLifeSpan);
+			UGameplayStatics::SpawnDecalAttached(DefaultDecalMaterial, DecalVector, TempComponent, HitResult.BoneName, HitResult.ImpactPoint, DecalRotation, EAttachLocation::KeepWorldPosition, DecalLifeSpan);
 
 			break;
 		}

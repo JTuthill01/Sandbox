@@ -11,6 +11,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FInteract);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FAimEnter);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FAimExit);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FStopFire);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FShotgunReload);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFireWeapon, EWeaponType, Weapon);
 
 UENUM(BlueprintType)
@@ -43,11 +44,23 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FAimExit OnAimExit;
 
+	UPROPERTY(BlueprintAssignable)
+	FShotgunReload OnShotgunReload;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Weapon)
 	EHasWeapon HasWeaponEnum;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Weapon)
 	AWeaponBase* CurrentWeapon;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animation)
+	TArray<class UAnimMontage*> AmericanShotgunReloadMonatge;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animation)
+	TArray<class UAnimMontage*> BulldogReloadMonatge;
+
+	UPROPERTY()
+	UAnimInstance* Instance;
 
 public:
 	UFUNCTION(BlueprintCallable)
@@ -165,6 +178,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
 	AWeaponBase* WeaponSlot_02;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
+	EWeaponType CurrentWeaponType;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup")
 	class APickupBase* Pickup;
 
@@ -173,9 +189,6 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup")
 	int32 PickupIndex;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup")
-	EWeaponType CurrentWeaponType;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup")
 	bool bShouldSpawnPickup;
@@ -252,6 +265,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Weapon)
 	bool bIsThirdSlotActive;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Weapon)
+	int32 LoopIndex;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Health)
 	FTimerHandle RegenerateHealthTimer;
 
@@ -260,6 +276,9 @@ protected:
 
 	UPROPERTY()
 	EWeaponSlot EWeaponSlotEnum;
+
+	UPROPERTY()
+	int32 ShotgunClassIndex;
 
 private:
 

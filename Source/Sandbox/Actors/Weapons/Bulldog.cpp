@@ -32,9 +32,18 @@ void ABulldog::WeaponReload()
 
 	WeaponReloadAnim = WeaponMesh->GetAnimInstance();
 
+	int32 LoopAmount = FullMag - CurrentAmmo;
+
 	if (WeaponReloadAnim)
 	{
-		WeaponReloadAnim->Montage_Play(WeaponReloadMontage);
+		WeaponReloadAnim->Montage_Play(BulldogMonatge[EShotgunReloadIndex::Start]);
+
+		for (size_t i = 0; i < LoopAmount; ++i)
+		{
+			WeaponReloadAnim->Montage_Play(BulldogMonatge[EShotgunReloadIndex::Loop]);
+		}
+
+		WeaponReloadAnim->Montage_Play(BulldogMonatge[EShotgunReloadIndex::End]);
 	}
 }
 

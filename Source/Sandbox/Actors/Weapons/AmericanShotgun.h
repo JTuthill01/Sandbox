@@ -20,5 +20,16 @@ protected:
 
 	void WeaponReload() override;
 
+	void ShotgunReload() override;
+
 	void BeginPlay() override;
+
+	virtual void ShotgunReloadStart() override;
+
+	virtual void ShotgunReloadLoop() override;
+
+	virtual void ShotgunReloadEnd() override;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animation)
+	TArray<class UAnimMontage*> AmericanReloadMonatge;
 };

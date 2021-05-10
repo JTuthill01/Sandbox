@@ -18,4 +18,7 @@ protected:
 	void WeaponReload() override;
 
 	void BeginPlay() override;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TArray<class UAnimMontage*> BulldogMonatge;
 };

@@ -18,6 +18,8 @@ enum class EWeaponClass : uint8 { Pistol, Rifle, Shotgun };
 UENUM(BlueprintType)
 enum class EFireType : uint8 { Hitscan, Projectile };
 
+enum EShotgunReloadIndex : uint8 { Start, Loop, End };
+
 USTRUCT(BlueprintType)
 struct FWeaponData
 {
@@ -49,14 +51,17 @@ public:
 	FORCEINLINE FName GetWeaponName() const { return WeaponName; }
 	FORCEINLINE FHitResult GetHitResult() { return Hit; }
 
+	FORCEINLINE bool GetCanPlayNext() { return bCanPlayNext; }
 	FORCEINLINE bool GetIsAiming() const { return bIsAiming; }
 	FORCEINLINE int GetTotalMaxAmmo() const { return MaxTotalAmmo; }
 	FORCEINLINE int GetCurrentTotalAmmo() { return CurrentTotalAmmo; }
 	FORCEINLINE int GetCurrentAmmo() { return CurrentAmmo; }
+	FORCEINLINE int32 GetFullMag() { return FullMag; }
 	FORCEINLINE float GetKillImpulse() { return KillImpulse; }
 
 	FORCEINLINE void SetCurrentAmmo(int Ammo) { CurrentAmmo = Ammo; }
 	FORCEINLINE void SetShouldReload(bool Reload) { bShouldReload = Reload; }
+	FORCEINLINE void SetCanPlayNext(bool CanPlay) { bCanPlayNext = CanPlay; }
 
 public:
 	UFUNCTION(BlueprintCallable)
@@ -64,6 +69,18 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	virtual void WeaponReload();
+
+	UFUNCTION(BlueprintCallable)
+	virtual void ShotgunReload();
+
+	UFUNCTION(BlueprintCallable)
+	virtual void ShotgunReloadStart();
+
+	UFUNCTION(BlueprintCallable)
+	virtual void ShotgunReloadLoop();
+
+	UFUNCTION(BlueprintCallable)
+	virtual void ShotgunReloadEnd();
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void AutomaticRecoil();
@@ -169,6 +186,9 @@ protected:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FAmmoData AmmoData;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animation)
+	bool bCanPlayNext;
+
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Ammo)
 	int CurrentAmmo;
 
@@ -186,6 +206,9 @@ protected:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Ammo)
 	bool bShouldReload;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Ammo)
+	int32 FullMag;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	float ReloadTime;

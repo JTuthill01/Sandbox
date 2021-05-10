@@ -60,6 +60,33 @@ void AWeaponBase::WeaponReload()
 	CurrentTotalAmmo = FMath::Clamp(CurrentTotalAmmo, 0, MaxTotalAmmo);
 }
 
+void AWeaponBase::ShotgunReload()
+{
+	bShouldReload = false;
+
+	ReloadCurrentAmmo = MaxMagAmmo - CurrentAmmo;
+
+	CurrentTotalAmmo -= ReloadCurrentAmmo;
+
+	CurrentAmmo++;
+
+	CurrentAmmo = FMath::Clamp(CurrentAmmo, 0, MaxTotalAmmo);
+
+	CurrentTotalAmmo = FMath::Clamp(CurrentTotalAmmo, 0, MaxTotalAmmo);
+}
+
+void AWeaponBase::ShotgunReloadStart()
+{
+}
+
+void AWeaponBase::ShotgunReloadLoop()
+{
+}
+
+void AWeaponBase::ShotgunReloadEnd()
+{
+}
+
 void AWeaponBase::WeaponFire(EFireType FireType)
 {
 	fireType = FireType;
@@ -76,7 +103,7 @@ void AWeaponBase::WeaponFire(EFireType FireType)
 		bShouldReload = false;
 	}
 
-	FVector Scale = FVector(2.F, 2.F, 2.F);
+	FVector Scale = FVector(2.F);
 
 	FRotator Rotation;
 	FRotator TempRotator;
@@ -95,16 +122,19 @@ void AWeaponBase::WeaponFire(EFireType FireType)
 
 		if (PlayerRef)
 		{
+			LocalTransform = UKismetMathLibrary::MakeTransform(Hit.Location, TempRotator, Scale);
+
 			if (bHasMultipleBullets == true)
 			{
-				for (int i = 0; i < BulletCount - 1; i++)
+				for (size_t i = 0; i < BulletCount - 1; ++i)
 				{
 					CalculateShot(PlayerRef->GetCamera(), WeaponMesh, SocketName, Hit, Transform);
 
-					if (Impact != nullptr)
-					{
-						Impact = GetWorld()->SpawnActor<AImpactEffects>(ImpactEffects, Transform, SpawnInfo);
-					}
+					Impact = GetWorld()->SpawnActorDeferred<AImpactEffects>(ImpactEffects, LocalTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+
+					Impact->SetHitResult(Hit);
+
+					UGameplayStatics::FinishSpawningActor(Impact, LocalTransform);
 		
 					AddDamage(Hit);
 				}
@@ -118,8 +148,6 @@ void AWeaponBase::WeaponFire(EFireType FireType)
 			else
 			{
 				CalculateShot(PlayerRef->GetCamera(), WeaponMesh, SocketName, Hit, Transform);
-
-				LocalTransform = UKismetMathLibrary::MakeTransform(Hit.Location, TempRotator, Scale);
 
 				AImpactEffects* TempImpact = GetWorld()->SpawnActorDeferred<AImpactEffects>(ImpactEffects, LocalTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 
@@ -135,13 +163,30 @@ void AWeaponBase::WeaponFire(EFireType FireType)
 		break;
 
 	case EFireType::Projectile:
+		
+		if (bHasMultipleBullets == true)
+		{
+			for (size_t i = 0; i < BulletCount - 1; ++i)
+			{
+				CalculateShot(PlayerRef->GetCamera(), WeaponMesh, SocketName, Hit, Transform);
 
-		CalculateShot(PlayerRef->GetCamera(), WeaponMesh, "Fire_FX_Slot", Hit, Transform);
+				ProjectileTransform = UKismetMathLibrary::MakeTransform(Hit.Location, TempRotator, Scale);
 
-		ProjectileTransform = UKismetMathLibrary::MakeTransform(Hit.Location, TempRotator, Scale);
+				Projectile = GetWorld()->SpawnActor<AProjectileBase>(SpawnProjectile, ProjectileTransform, SpawnInfo);
 
-		Projectile = GetWorld()->SpawnActor<AProjectileBase>(SpawnProjectile, ProjectileTransform, SpawnInfo);
+				AddDamage(Hit);
+			}
+		}
 
+		else
+		{
+			CalculateShot(PlayerRef->GetCamera(), WeaponMesh, "Fire_FX_Slot", Hit, Transform);
+
+			ProjectileTransform = UKismetMathLibrary::MakeTransform(Hit.Location, TempRotator, Scale);
+
+			Projectile = GetWorld()->SpawnActor<AProjectileBase>(SpawnProjectile, ProjectileTransform, SpawnInfo);
+		}
+		
 		break;
 
 	default:

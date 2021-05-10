@@ -41,6 +41,8 @@ APlayerCharacter::APlayerCharacter()
 	CurrentArmor = MaxArmor;
 
 	RegenerativeHealthRate = 25.F;
+
+	ShotgunClassIndex = static_cast<int32>(EWeaponClass::Shotgun);
 }
 
 // Called when the game starts or when spawned
@@ -51,6 +53,8 @@ void APlayerCharacter::BeginPlay()
 	DefaultWalkSpeed = GetCharacterMovement()->MaxWalkSpeed;
 
 	CurrentWeapon = IReferences::Execute_GetWeaponRef(AWeaponBase::StaticClass()->GetDefaultObject());
+
+	Instance = Arms->GetAnimInstance();
 }
 
 // Called every frame
@@ -242,6 +246,8 @@ void APlayerCharacter::SpawnWeapon(TSubclassOf<AWeaponBase > WeaponToSpawn, bool
 
 void APlayerCharacter::Fire()
 {
+	int32 WeaponIndex = static_cast<int32>(CurrentWeapon->WeaponClass);
+
 	if (bCanFire == true && bIsReloading == false && bIsChangingWeapon == false)
 	{
 		if (CurrentWeapon->HasAmmoInMag() == true)
@@ -255,15 +261,31 @@ void APlayerCharacter::Fire()
 			bIsFiring = true;
 		}
 
-		else if (CurrentWeapon->HasAmmoInMag() == false)
+		else if (WeaponIndex != ShotgunClassIndex)
 		{
-			if (CurrentWeapon->HasExtraAmmo() == true)
+			if (CurrentWeapon->HasAmmoInMag() == false)
 			{
-				bCanReload = true;
+				if (CurrentWeapon->HasExtraAmmo() == true)
+				{
+					bCanReload = true;
 
-				Reload();
+					Reload();
 
-				CurrentWeapon->SetShouldReload(false);
+					CurrentWeapon->SetShouldReload(false);
+				}
+			}
+		}
+
+		else
+		{
+			if (CurrentWeapon->HasAmmoInMag() == false)
+			{
+				if (CurrentWeapon->HasExtraAmmo() == true)
+				{
+					bCanReload = true;
+
+					CurrentWeapon->SetShouldReload(false);
+				}
 			}
 		}
 	}
@@ -331,13 +353,20 @@ void APlayerCharacter::SpawnPickup()
 
 void APlayerCharacter::Reload()
 {
+	int32 WeaponIndex = static_cast<int32>(CurrentWeapon->WeaponClass);
+
 	if (bCanReload == true && CurrentWeapon->GetCurrentTotalAmmo() > 0)
 	{
 		bIsEmpty = false;
 
 		if (bIsReloading == false && bIsChangingWeapon == false)
 		{
-			if (CurrentWeapon->HasFullMag() == false)
+			if (WeaponIndex == ShotgunClassIndex)
+			{
+				OnShotgunReload.Broadcast();
+			}
+
+			else if (CurrentWeapon->HasFullMag() == false)
 			{
 				bIsReloading = true;
 
@@ -547,29 +576,35 @@ void APlayerCharacter::StopFire()
 	OnStopFire.Broadcast();
 
 	bIsFiring = false;
+
+	LoopIndex = CurrentWeapon->GetCurrentAmmo();
 }
 
 void APlayerCharacter::FireAnimationToPlay()
 {
-	UAnimInstance* Instance = Arms->GetAnimInstance();
+	UAnimInstance* LocalInstance = Arms->GetAnimInstance();
 
 	int32 WeaponIndex = static_cast<int32>(CurrentWeapon->WeaponType);
 
 	if (FireMonatge.IsValidIndex(WeaponIndex))
 	{
-		Instance->Montage_Play(FireMonatge[WeaponIndex]);
+		LocalInstance->Montage_Play(FireMonatge[WeaponIndex]);
 	}
 }
 
 void APlayerCharacter::ReloadAnimationToPlay()
 {
-	UAnimInstance* Instance = Arms->GetAnimInstance();
+	UAnimInstance* LocalInstance = Arms->GetAnimInstance();
 
 	int32 WeaponIndex = static_cast<int32>(CurrentWeapon->WeaponType);
+	int32 ShotgunIndex = static_cast<int32>(CurrentWeapon->WeaponClass);
 
-	if (ReloadMonatge.IsValidIndex(WeaponIndex))
+	if (ShotgunIndex != ShotgunClassIndex)
 	{
-		Instance->Montage_Play(ReloadMonatge[WeaponIndex]);
+		if (ReloadMonatge.IsValidIndex(WeaponIndex))
+		{
+			LocalInstance->Montage_Play(ReloadMonatge[WeaponIndex]);
+		}
 	}
 }
 

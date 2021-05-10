@@ -39,8 +39,6 @@ void AProjectileBase::BeginPlay()
 	AICharacterRef = IReferences::Execute_GetAICharacterRef(AAICharacter::StaticClass()->GetDefaultObject());
 
 	ProjectileMovement->OnProjectileStop.AddDynamic(this, &AProjectileBase::ProjectileStop);
-
-	SetLifeSpan(1.F);
 }
 
 void AProjectileBase::ProjectileStop(const FHitResult& HitResult)
@@ -66,7 +64,7 @@ void AProjectileBase::ProjectileStop(const FHitResult& HitResult)
 
 		SpawnImpact(HitResult);
 
-		ProjectileMesh->SetHiddenInGame(true);
+		Destroy();
 
 		Spawn(HitResult);
 	}
@@ -163,8 +161,6 @@ void AProjectileBase::SpawnImpact(const FHitResult& HitResult)
 
 		UGameplayStatics::FinishSpawningActor(Effect, TempTransform);
 	}
-
-	GEngine->AddOnScreenDebugMessage(-1, 6.F, FColor::Purple, HitResult.GetActor()->GetName());
 }
 
 AProjectileBase* AProjectileBase::GetProjectileRef_Implementation() { return this; }

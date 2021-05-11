@@ -15,7 +15,13 @@ public:
 protected:
 	void WeaponFire(EFireType FireType) override;
 
-	void WeaponReload() override;
+	virtual void ShotgunReload() override;
+
+	virtual void ShotgunReloadStart() override;
+
+	virtual void ShotgunReloadLoop() override;
+
+	virtual void ShotgunReloadEnd() override;
 
 	void BeginPlay() override;
 

@@ -58,44 +58,31 @@ void AAmericanShotgun::ShotgunReloadStart()
 {
 	Super::ShotgunReloadStart();
 
-	float MontageTime = WeaponReloadAnim->Montage_Play(AmericanReloadMonatge[EShotgunReloadIndex::Start], false);
+	WeaponReloadAnim->Montage_Play(AmericanReloadMonatge[EShotgunReloadIndex::Start]);
 
 	PlayerRef->Instance->Montage_Play(PlayerRef->AmericanShotgunReloadMonatge[EShotgunReloadIndex::Start]);
-
-	if (MontageTime > 0.F)
-	{
-		bCanPlayNext = true;
-	}
 }
 
 void AAmericanShotgun::ShotgunReloadLoop()
 {
 	Super::ShotgunReloadLoop();
 
-	bCanPlayNext = false;
+	WeaponReloadAnim->Montage_Play(AmericanReloadMonatge[EShotgunReloadIndex::Loop]);
 
-	while (bCanPlayNext == false)
-	{
-		WeaponReloadAnim->Montage_Play(AmericanReloadMonatge[EShotgunReloadIndex::Loop]);
+	PlayerRef->Instance->Montage_Play(PlayerRef->AmericanShotgunReloadMonatge[EShotgunReloadIndex::Loop]);
 
-		PlayerRef->Instance->Montage_Play(PlayerRef->AmericanShotgunReloadMonatge[EShotgunReloadIndex::Loop]);
-
-		ShotgunReload();
-	}
-
-	if (bCanPlayNext == true)
-	{
-		ShotgunReloadEnd();
-	}
+	bIsReloading = true;
 }
 
 void AAmericanShotgun::ShotgunReloadEnd()
 {
 	Super::ShotgunReloadEnd();
 
-	WeaponReloadAnim->Montage_Play(AmericanReloadMonatge[EShotgunReloadIndex::End], false);
+	GEngine->AddOnScreenDebugMessage(-1, 6.F, FColor::Purple, __FUNCTION__);
+
+	WeaponReloadAnim->Montage_Play(AmericanReloadMonatge[EShotgunReloadIndex::End]);
 
 	PlayerRef->Instance->Montage_Play(PlayerRef->AmericanShotgunReloadMonatge[EShotgunReloadIndex::End]);
-
-	bCanPlayNext = false;
+	
+	bIsReloading = false;
 }

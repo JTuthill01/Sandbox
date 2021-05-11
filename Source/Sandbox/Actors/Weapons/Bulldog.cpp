@@ -3,6 +3,7 @@
 #include "NiagaraSystem.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sandbox/Instances/SandboxGameInstance.h"
+#include "Sandbox/Character/PlayerCharacter.h"
 
 ABulldog::ABulldog() = default;
 
@@ -26,25 +27,40 @@ void ABulldog::WeaponFire(EFireType FireType)
 	}
 }
 
-void ABulldog::WeaponReload()
+void ABulldog::ShotgunReload()
 {
-	Super::WeaponReload();
+	Super::ShotgunReload();
+}
 
-	WeaponReloadAnim = WeaponMesh->GetAnimInstance();
+void ABulldog::ShotgunReloadStart()
+{
+	Super::ShotgunReloadStart();
 
-	int32 LoopAmount = FullMag - CurrentAmmo;
+	WeaponReloadAnim->Montage_Play(BulldogMonatge[EShotgunReloadIndex::Start]);
 
-	if (WeaponReloadAnim)
-	{
-		WeaponReloadAnim->Montage_Play(BulldogMonatge[EShotgunReloadIndex::Start]);
+	PlayerRef->Instance->Montage_Play(PlayerRef->BulldogReloadMonatge[EShotgunReloadIndex::Start]);
+}
 
-		for (size_t i = 0; i < LoopAmount; ++i)
-		{
-			WeaponReloadAnim->Montage_Play(BulldogMonatge[EShotgunReloadIndex::Loop]);
-		}
+void ABulldog::ShotgunReloadLoop()
+{
+	Super::ShotgunReloadLoop();
 
-		WeaponReloadAnim->Montage_Play(BulldogMonatge[EShotgunReloadIndex::End]);
-	}
+	WeaponReloadAnim->Montage_Play(BulldogMonatge[EShotgunReloadIndex::Loop]);
+
+	PlayerRef->Instance->Montage_Play(PlayerRef->BulldogReloadMonatge[EShotgunReloadIndex::Loop]);
+
+	bIsReloading = true;
+}
+
+void ABulldog::ShotgunReloadEnd()
+{
+	Super::ShotgunReloadEnd();
+
+	WeaponReloadAnim->Montage_Play(BulldogMonatge[EShotgunReloadIndex::End]);
+
+	PlayerRef->Instance->Montage_Play(PlayerRef->BulldogReloadMonatge[EShotgunReloadIndex::End]);
+
+	bIsReloading = false;
 }
 
 void ABulldog::BeginPlay()
@@ -54,4 +70,6 @@ void ABulldog::BeginPlay()
 	USandboxGameInstance* Instance = Cast<USandboxGameInstance>(UGameplayStatics::GetGameInstance(GetWorld()));
 
 	AmmoData = Instance->BulldogData();
+
+	WeaponReloadAnim = WeaponMesh->GetAnimInstance();
 }

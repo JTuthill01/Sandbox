@@ -13,7 +13,7 @@ FAmmoData USandboxGameInstance::AK47Data()
 
 FAmmoData USandboxGameInstance::AmericanShotgunData()
 {
-	AmericanShotgunAmmoData.Damage = 70.F;
+	AmericanShotgunAmmoData.Damage = 25.F;
 	AmericanShotgunAmmoData.CriticalHit = 5.F;
 	AmericanShotgunAmmoData.DamageRadius = 0.F;
 
@@ -31,7 +31,7 @@ FAmmoData USandboxGameInstance::BelgianARData()
 
 FAmmoData USandboxGameInstance::BulldogData()
 {
-	BulldogAmmoData.Damage = 85.F;
+	BulldogAmmoData.Damage = 35.F;
 	BulldogAmmoData.CriticalHit = 5.F;
 	BulldogAmmoData.DamageRadius = 0.F;
 
@@ -40,7 +40,7 @@ FAmmoData USandboxGameInstance::BulldogData()
 
 FAmmoData USandboxGameInstance::HandCannonData()
 {
-	HandCannonAmmoData.Damage = 90.F;
+	HandCannonAmmoData.Damage = 70.F;
 	HandCannonAmmoData.CriticalHit = 5.F;
 	HandCannonAmmoData.DamageRadius = 0.F;
 
@@ -67,7 +67,7 @@ FAmmoData USandboxGameInstance::ShortStrokeARData()
 
 FAmmoData USandboxGameInstance::SKSData()
 {
-	SKSAmmoData.Damage = 80.F;
+	SKSAmmoData.Damage = 70.F;
 	SKSAmmoData.CriticalHit = 90.F;
 	SKSAmmoData.DamageRadius = 0.F;
 
@@ -99,5 +99,59 @@ FAmmoData USandboxGameInstance::XM82Data()
 	XM82AmmoData.DamageRadius = 0.F;
 
 	return XM82AmmoData;
+}
+
+FAmmoData USandboxGameInstance::SVDData()
+{
+	SVDAmmoData.Damage = 78.F;
+	SVDAmmoData.CriticalHit = 20.F;
+	SVDAmmoData.DamageRadius = 0.F;
+
+	return SVDAmmoData;
+}
+
+FAmmoData USandboxGameInstance::NavySMGData()
+{
+	NavySMGAmmoData.Damage = 56.F;
+	NavySMGAmmoData.CriticalHit = 15.F;
+	NavySMGAmmoData.DamageRadius = 0.F;
+
+	return NavySMGAmmoData;
+}
+
+FAmmoData USandboxGameInstance::MicroSMGData()
+{
+	MicroSMGAmmoData.Damage = 42.F;
+	MicroSMGAmmoData.CriticalHit = 19.F;
+	MicroSMGAmmoData.DamageRadius = 0.F;
+
+	return MicroSMGAmmoData;
+}
+
+FAmmoData USandboxGameInstance::M4A1Data()
+{
+	M4A1AmmoData.Damage = 50.F;
+	M4A1AmmoData.CriticalHit = 14.F;
+	M4A1AmmoData.DamageRadius = 0.F;
+
+	return M4A1AmmoData;
+}
+
+FAmmoData USandboxGameInstance::ItalianShotgunData()
+{
+	ItalianShotgunAmmoData.Damage = 24.F;
+	ItalianShotgunAmmoData.CriticalHit = 10.F;
+	ItalianShotgunAmmoData.DamageRadius = 0.F;
+
+	return ItalianShotgunAmmoData;
+}
+
+FAmmoData USandboxGameInstance::AK74Data()
+{
+	AK74AmmoData.Damage = 65.F;
+	AK74AmmoData.CriticalHit = 14.F;
+	AK74AmmoData.DamageRadius = 0.F;
+
+	return AK74AmmoData;
 }
 

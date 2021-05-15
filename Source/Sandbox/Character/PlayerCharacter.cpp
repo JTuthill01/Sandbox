@@ -11,6 +11,7 @@
 #include "Kismet/KismetStringLibrary.h"
 #include "Sandbox/Interfaces/References.h"
 #include "Sandbox/Pickups/PickupBase.h"
+#include "Sandbox/Actors/Weapons/WarHammer/WarHammer.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -88,6 +89,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	PlayerInputComponent->BindAction(TEXT("Damage"), IE_Pressed, this, &APlayerCharacter::DebugTakeDamage);
 	PlayerInputComponent->BindAction(TEXT("ADS"), IE_Pressed, this, &APlayerCharacter::FOnAimEnter);
 	PlayerInputComponent->BindAction(TEXT("ADS"), IE_Released, this, &APlayerCharacter::FOnAimExit);
+	PlayerInputComponent->BindAction(TEXT("Melee"), IE_Pressed, this, &APlayerCharacter::Melee);
 }
 
 void APlayerCharacter::PlayerTakeDamage_Implementation(int Damage)
@@ -335,6 +337,34 @@ void APlayerCharacter::SwapWeapon(TSubclassOf<AWeaponBase> WeaponToSpawn, bool& 
 	}
 }
 
+void APlayerCharacter::SpawnHammer(TSubclassOf<class AWarHammer> HammerToSpawn, bool& bIsSuccessful)
+{
+	FActorSpawnParameters Params;
+	Params.Owner = this;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+	FVector Location = Arms->GetComponentLocation();
+
+	FRotator Rotation = Arms->GetComponentRotation();
+
+	HammerSpawn = GetWorld()->SpawnActor<AWarHammer>(HammerToSpawn, Location, Rotation, Params);
+
+	if (IsValid(HammerSpawn))
+	{
+		HammerSpawn->AttachToComponent(Arms, FAttachmentTransformRules::SnapToTargetIncludingScale,
+			HammerSpawn->GetHammerSocketName());
+
+		HammerSpawn->SetActorHiddenInGame(true);
+
+		bIsSuccessful = true;
+	}
+
+	else
+	{
+		bIsSuccessful = false;
+	}
+}
+
 void APlayerCharacter::SpawnPickup()
 {
 	FActorSpawnParameters Params;
@@ -361,12 +391,7 @@ void APlayerCharacter::Reload()
 
 		if (bIsReloading == false && bIsChangingWeapon == false)
 		{
-			if (WeaponIndex == ShotgunClassIndex)
-			{
-				OnShotgunReload.Broadcast();
-			}
-
-			else if (CurrentWeapon->HasFullMag() == false)
+			if (CurrentWeapon->HasFullMag() == false)
 			{
 				bIsReloading = true;
 
@@ -503,6 +528,27 @@ void APlayerCharacter::DebugTakeDamage()
 	}
 }
 
+void APlayerCharacter::Melee()
+{
+	if (IsValid(HammerSpawn))
+	{
+		int32 MeleeIndex = FMath::RandRange(0, MeleeMontage.Num());
+		int32 DefaultIndex = 0;
+
+		HideHammer(false);
+
+		if (MeleeMontage.IsValidIndex(MeleeIndex))
+		{
+			Instance->Montage_Play(MeleeMontage[MeleeIndex]);
+		}
+
+		else
+		{
+			Instance->Montage_Play(MeleeMontage[DefaultIndex]);
+		}
+	}
+}
+
 void APlayerCharacter::FirePressed()
 {
 	switch (HasWeaponEnum)
@@ -586,9 +632,13 @@ void APlayerCharacter::FireAnimationToPlay()
 
 	int32 WeaponIndex = static_cast<int32>(CurrentWeapon->WeaponType);
 
+	FString TempStr = FString::FromInt(WeaponIndex);
+
 	if (FireMonatge.IsValidIndex(WeaponIndex))
 	{
 		LocalInstance->Montage_Play(FireMonatge[WeaponIndex]);
+
+		GEngine->AddOnScreenDebugMessage(-1, 6.F, FColor::Yellow, TEXT("Weapon Index is: ") + TempStr);
 	}
 }
 
@@ -626,6 +676,14 @@ void APlayerCharacter::SetIconImage(UMaterialInstance*& Image)
 	if (IsValid(CurrentWeapon))
 	{
 		Image = CurrentWeapon->GetIcon();
+	}
+}
+
+void APlayerCharacter::HideHammer(bool ShouldHide)
+{
+	if (IsValid(HammerSpawn))
+	{
+		HammerSpawn->SetActorHiddenInGame(ShouldHide);
 	}
 }
 

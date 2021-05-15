@@ -40,38 +40,39 @@ void ABoxesAndCasesBase::Open()
 
 	GetWorld()->GetTimerManager().SetTimer(RemoveLidTimer, this, &ABoxesAndCasesBase::RemoveLid, TimeToRemove, false);
 
-	Spawn();
+	SpawnCasePickup();
+
+	BoxCollision->DestroyComponent();
 }
 
-void ABoxesAndCasesBase::Spawn()
+void ABoxesAndCasesBase::SpawnCasePickup()
 {
-	FActorSpawnParameters parms;
-	parms.Owner = this;
-	parms.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	FActorSpawnParameters Parms;
+	Parms.Owner = this;
+	Parms.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	for (size_t i = 0; i < Point.Num(); ++i)
+	int32 DefaultIndex = 0;
+
+	for (size_t i = 0; i < NumOfPickupsToSpawn; ++i)
 	{
-		SpawnLocation = Point[i]->GetComponentLocation();
+		SpawnLocation = Hull->GetSocketLocation(SocketNameArray[i]);
 
-		SpawnRotator = Point[i]->GetComponentRotation();
+		SpawnRotator = Hull->GetSocketRotation(SocketNameArray[i]);
 
-		for (size_t j = 0; j < SpawnArray.Num(); ++j)
+		CurrentIndex = FMath::RandRange(0, PickupIndex);
+
+		if (SpawnArray.IsValidIndex(CurrentIndex))
 		{
-			BasePickup = GetWorld()->SpawnActor<APickupBase>(SpawnArray[j], SpawnLocation, SpawnRotator, parms);
+			BasePickup = GetWorld()->SpawnActor<APickupBase>(SpawnArray[CurrentIndex], SpawnLocation, SpawnRotator, Parms);
+
+			//BasePickup->GetMesh()->SetSimulatePhysics(false);
+		}
+
+		else
+		{
+			BasePickup = GetWorld()->SpawnActor<APickupBase>(SpawnArray[DefaultIndex], SpawnLocation, SpawnRotator, Parms);
 
 			BasePickup->GetMesh()->SetSimulatePhysics(false);
-
-			if (IsValid(BasePickup))
-			{
-				BasePickup->SetIsAmmoSuccessful(true);
-			}
-
-			else
-			{
-				BasePickup->SetIsAmmoSuccessful(false);
-
-				break;
-			}
 		}
 	}
 }
@@ -80,14 +81,11 @@ void ABoxesAndCasesBase::InteractBegin(UPrimitiveComponent* OverlappedComponent,
 {
 	APlayerCharacter* Player = Cast<APlayerCharacter>(OtherActor);
 
+	AddWidget(OtherActor);
+
 	if (bHasBeenOpened == false)
 	{
-		AddWidget(OtherActor);
-	}
-
-	if (IsValid(Player))
-	{
-		if (bHasBeenOpened == false)
+		if (IsValid(Player))
 		{
 			Player->OnInteract.AddDynamic(this, &ABoxesAndCasesBase::Open);
 		}
@@ -116,6 +114,7 @@ void ABoxesAndCasesBase::RemoveLid()
 void ABoxesAndCasesBase::AddWidget_Implementation(AActor* OtherActor){}
 
 void ABoxesAndCasesBase::RemoveWidget_Implementation(AActor* OtherActor){}
+
 
 
 

@@ -10,7 +10,7 @@
 #include "WeaponBase.generated.h"
 
 UENUM(BlueprintType)
-enum class EWeaponType : uint8 { TT38, ShortStrokeAR, AmericanShotgun, Bulldog, L86, HandCannon, AK47, SMG, BelgianAR, SKS, XM82 };
+enum class EWeaponType : uint8 { TT38, ShortStrokeAR, AmericanShotgun, Bulldog, L86, HandCannon, AK47, SMG, BelgianAR, SKS, XM82, AK74, M4A1, NavySMG, ItalianShotgun, MicroSMG, SVD };
 
 UENUM(BlueprintType)
 enum class EWeaponClass : uint8 { Pistol, Rifle, Shotgun };
@@ -51,7 +51,6 @@ public:
 	FORCEINLINE FName GetWeaponName() const { return WeaponName; }
 	FORCEINLINE FHitResult GetHitResult() { return Hit; }
 
-	FORCEINLINE bool GetCanPlayNext() { return bCanPlayNext; }
 	FORCEINLINE bool GetIsAiming() const { return bIsAiming; }
 	FORCEINLINE int GetTotalMaxAmmo() const { return MaxTotalAmmo; }
 	FORCEINLINE int GetCurrentTotalAmmo() { return CurrentTotalAmmo; }
@@ -61,7 +60,6 @@ public:
 
 	FORCEINLINE void SetCurrentAmmo(int Ammo) { CurrentAmmo = Ammo; }
 	FORCEINLINE void SetShouldReload(bool Reload) { bShouldReload = Reload; }
-	FORCEINLINE void SetCanPlayNext(bool CanPlay) { bCanPlayNext = CanPlay; }
 
 public:
 	UFUNCTION(BlueprintCallable)
@@ -169,6 +167,9 @@ protected:
 	TSubclassOf<class AProjectileBase> SpawnProjectile;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Projectile)
+	TArray<TSubclassOf<class AProjectileBase>> ProjectileArray;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Projectile)
 	class AProjectileBase* Projectile;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = VFX)
@@ -185,9 +186,6 @@ protected:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	FAmmoData AmmoData;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animation)
-	bool bCanPlayNext;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Ammo)
 	int CurrentAmmo;
@@ -206,6 +204,9 @@ protected:
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Ammo)
 	bool bShouldReload;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Ammo)
+	bool bIsReloading;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Ammo)
 	int32 FullMag;

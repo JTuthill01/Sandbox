@@ -59,6 +59,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animation)
 	TArray<class UAnimMontage*> BulldogReloadMonatge;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Animation)
+	TArray<class UAnimMontage*> ItalianShotgunReloadMonatge;
+
 	UPROPERTY()
 	UAnimInstance* Instance;
 
@@ -72,8 +75,14 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SwapWeapon(TSubclassOf<AWeaponBase> WeaponToSpawn, bool& bIsSuccessful);
 
+	UFUNCTION(BlueprintCallable)
+	void SpawnHammer(TSubclassOf<class AWarHammer> HammerToSpawn, bool& bIsSuccessful);
+
 	UFUNCTION(BlueprintPure)
 	void SetIconImage(UMaterialInstance*& Image);
+
+	UFUNCTION(BlueprintCallable)
+	void HideHammer(bool ShouldHide);
 
 	UFUNCTION(BlueprintCallable)
 	void SpawnPickup();
@@ -172,6 +181,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	TArray<class UAnimMontage*> ReloadMonatge;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TArray<class UAnimMontage*> MeleeMontage;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
 	AWeaponBase* WeaponSlot_01;
 
@@ -180,6 +192,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
 	EWeaponType CurrentWeaponType;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "War Hammer")
+	class AWarHammer* HammerSpawn;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup")
 	class APickupBase* Pickup;
@@ -296,6 +311,7 @@ private:
 	void StopSprint();
 	void Interact();
 	void DebugTakeDamage();
+	void Melee();
 	
 	float DefaultWalkSpeed;
 	float AnimTime;

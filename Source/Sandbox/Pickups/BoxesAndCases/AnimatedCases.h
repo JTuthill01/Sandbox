@@ -2,18 +2,18 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "BoxesAndCasesBase.generated.h"
+#include "AnimatedCases.generated.h"
 
 class APickupBase;
 
 UCLASS()
-class SANDBOX_API ABoxesAndCasesBase : public AActor
+class SANDBOX_API AAnimatedCases : public AActor
 {
 	GENERATED_BODY()
 	
 public:	
 	// Sets default values for this actor's properties
-	ABoxesAndCasesBase();
+	AAnimatedCases();
 
 protected:
 	// Called when the game starts or when spawned
@@ -27,29 +27,26 @@ protected:
 	void RemoveWidget(AActor* OtherActor);
 
 	UFUNCTION(BlueprintCallable)
+	void Open();
+
+	UFUNCTION(BlueprintCallable)
 	void InteractBegin(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 	UFUNCTION(BlueprintCallable)
 	void InteractEnd(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
 	UFUNCTION(BlueprintCallable)
-	void RemoveLid();
-
-	UFUNCTION(BlueprintCallable)
-	void Open();
-
-	UFUNCTION(BlueprintCallable)
-	virtual void SpawnCasePickup();
+	void SpawnCasePickups();
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Mesh)
-	class UStaticMeshComponent* Hull;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Mesh)
-	class UStaticMeshComponent* Lid;
+	class USkeletalMeshComponent* CaseMesh;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Collision)
 	class UBoxComponent* BoxCollision;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Animation)
+	class UAnimationAsset* CaseOpenAnimation;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Pickup)
 	int32 NumOfPickupsToSpawn;
@@ -69,27 +66,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Pickup)
 	FRotator SpawnRotator;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement)
-	FVector MeshLocation;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement)
-	float Radius;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement)
-	float Strength;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Booleans)
-	bool bHasBeenOpened;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Varaibles)
-	float TimeToRemove;
-
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Variables)
 	int32 PickupIndex;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Variables)
 	int32 CurrentIndex;
 
-protected:
-	FTimerHandle RemoveLidTimer;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Variables)
+	bool bHasBeenOpened;
 };

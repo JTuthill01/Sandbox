@@ -81,6 +81,7 @@ void AWeaponBase::ShotgunReloadStart()
 
 void AWeaponBase::ShotgunReloadLoop()
 {
+	ShotgunReload();
 }
 
 void AWeaponBase::ShotgunReloadEnd()
@@ -166,15 +167,13 @@ void AWeaponBase::WeaponFire(EFireType FireType)
 		
 		if (bHasMultipleBullets == true)
 		{
-			for (size_t i = 0; i < BulletCount - 1; ++i)
+			for (auto& ProjectileSpawn : ProjectileArray)
 			{
-				CalculateShot(PlayerRef->GetCamera(), WeaponMesh, SocketName, Hit, Transform);
-
-				ProjectileTransform = UKismetMathLibrary::MakeTransform(Hit.Location, TempRotator, Scale);
-
-				Projectile = GetWorld()->SpawnActor<AProjectileBase>(SpawnProjectile, ProjectileTransform, SpawnInfo);
+				CalculateShot(PlayerRef->GetCamera(), WeaponMesh, "Fire_FX_Slot", Hit, Transform);
 
 				AddDamage(Hit);
+
+				Projectile = GetWorld()->SpawnActor<AProjectileBase>(ProjectileSpawn, Transform, SpawnInfo);
 			}
 		}
 
@@ -182,9 +181,9 @@ void AWeaponBase::WeaponFire(EFireType FireType)
 		{
 			CalculateShot(PlayerRef->GetCamera(), WeaponMesh, "Fire_FX_Slot", Hit, Transform);
 
-			ProjectileTransform = UKismetMathLibrary::MakeTransform(Hit.Location, TempRotator, Scale);
+			Projectile = GetWorld()->SpawnActor<AProjectileBase>(SpawnProjectile, Transform, SpawnInfo);
 
-			Projectile = GetWorld()->SpawnActor<AProjectileBase>(SpawnProjectile, ProjectileTransform, SpawnInfo);
+			AddDamage(Hit);
 		}
 		
 		break;

@@ -46,6 +46,24 @@ public:
 	UFUNCTION()
 	FAmmoData XM82Data();
 
+	UFUNCTION()
+	FAmmoData SVDData();
+
+	UFUNCTION()
+	FAmmoData NavySMGData();
+
+	UFUNCTION()
+	FAmmoData MicroSMGData();
+
+	UFUNCTION()
+	FAmmoData M4A1Data();
+
+	UFUNCTION()
+	FAmmoData ItalianShotgunData();
+
+	UFUNCTION()
+	FAmmoData AK74Data();
+
 private:
 	UPROPERTY()
 	FAmmoData AK47AmmoData;
@@ -79,4 +97,22 @@ private:
 
 	UPROPERTY()
 	FAmmoData XM82AmmoData;
+
+	UPROPERTY()
+	FAmmoData SVDAmmoData;
+
+	UPROPERTY()
+	FAmmoData NavySMGAmmoData;
+
+	UPROPERTY()
+	FAmmoData MicroSMGAmmoData;
+
+	UPROPERTY()
+	FAmmoData M4A1AmmoData;
+
+	UPROPERTY()
+	FAmmoData ItalianShotgunAmmoData;
+
+	UPROPERTY()
+	FAmmoData AK74AmmoData;
 };

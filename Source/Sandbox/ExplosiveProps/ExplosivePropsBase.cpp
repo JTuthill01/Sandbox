@@ -8,7 +8,6 @@
 #include "Sandbox/Interfaces/PlayerRef.h"
 #include "Sandbox/Interfaces/Take_Damage.h"
 
-// Sets default values
 AExplosivePropsBase::AExplosivePropsBase()
 {
 	Capsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("Capsule"));
@@ -17,15 +16,10 @@ AExplosivePropsBase::AExplosivePropsBase()
 	ExplosiveProp->SetupAttachment(Capsule);
 
 	SetRootComponent(Capsule);
-
-	CurrentHealth = 20;
-
-	DamageRadius = 300.F;
 }
 
  AExplosivePropsBase* AExplosivePropsBase::GetExplosivePropRef_Implementation(){ return this; }
 
-// Called when the game starts or when spawned
 void AExplosivePropsBase::BeginPlay()
 {
 	Super::BeginPlay();
@@ -58,26 +52,26 @@ void AExplosivePropsBase::SetDamage(int32 Damage, FHitResult HitResult, int32& D
 
 void AExplosivePropsBase::UpdateHealth(int32 Damage, bool& IsDead)
 {
-	if (Damage >= CurrentHealth)
+	if (Damage >= PropData.Health)
 	{
 		IsDead = true;
 
-		CurrentHealth = 0.F;
+		PropData.Health = 0.F;
 	}
 
 	else
 	{
-		CurrentHealth -= Damage;
+		PropData.Health -= Damage;
 	}
 }
 
 void AExplosivePropsBase::Dead()
 {
-	FVector TempVector = GetActorLocation();
+	FVector TempVector = ExplosiveProp->GetComponentLocation();
 
-	UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), ExplosionFX, TempVector);
+	FRotator TempRotator = ExplosiveProp->GetComponentRotation();
+
+	UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), ExplosionFX, TempVector, TempRotator);
 
 	UGameplayStatics::SpawnSoundAtLocation(GetWorld(), ExplosiveSound, TempVector);
-
-	Destroy();
 }

@@ -5,6 +5,8 @@
 #include "Sandbox/Interfaces/OnExplosivePropTakeDamage.h"
 #include "Sandbox/Interfaces/Take_Damage.h"
 #include "Sandbox/Interfaces/References.h"
+#include "Sandbox/Structs/STR_PropData.h"
+#include "Sandbox/Enums/Enums.h"
 #include "ExplosivePropsBase.generated.h"
 
 UCLASS()
@@ -18,10 +20,14 @@ public:
 
 	virtual AExplosivePropsBase* GetExplosivePropRef_Implementation() override;
 
-	FORCEINLINE virtual void SetDamageRadius(float Radius) { DamageRadius = Radius; }
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Struct)
+	FPropData PropData;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Damage)
-	float DamageRadius;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Enum)
+	EPropType PropType;
+
+	FORCEINLINE class UStaticMeshComponent* GetPropMesh() { return ExplosiveProp; }
+	FORCEINLINE FName GetPropName() { return PropName; }
 
 protected:
 	// Called when the game starts or when spawned
@@ -37,7 +43,7 @@ protected:
 	virtual void UpdateHealth(int32 Damage, bool& IsDead);
 
 	UFUNCTION(BlueprintCallable)
-	void Dead();
+	virtual void Dead();
 
 protected:
 	UPROPERTY()
@@ -55,6 +61,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Sound)
 	class USoundBase* ExplosiveSound;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Name)
+	FName PropName;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Name)
+	FName PropSocketName;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Health)
 	int32 CurrentHealth;
 
@@ -63,10 +75,4 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Damage)
 	bool bShouldDealDamage;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = SpawnLocation)
-	FVector Location;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = SpawnLocation)
-	FRotator Rotation;
 };

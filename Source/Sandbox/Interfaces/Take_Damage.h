@@ -22,5 +22,14 @@ public:
 	void Take_Damage(FAmmoData Ammo_Data, float CriticalHitModifer, FHitResult HitResult);
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void Take_Melee_Damage(int32 DamageToTake, FHitResult HitResult);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void PlayerTakeDamage(int Damage);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void OnDealExplosiveDamage(FHitResult HitResult, int32 DamageToApply);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void TakeGernadeDamage(int32 DamageToApply);
 };

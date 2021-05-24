@@ -28,4 +28,7 @@ public:
 
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	class AWeaponBase* GetWeaponRef();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	class AExplosivePropsBase* GetExplosivePropRef();
 };

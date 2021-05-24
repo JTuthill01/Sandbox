@@ -11,6 +11,10 @@
 #include "Chaos/ChaosEngineInterface.h"
 #include "Sandbox/Actors/ImpactEffects/ImpactEffects.h"
 #include "Sandbox/Actors/Projectiles/ProjectileBase.h"
+#include "Sandbox/Interfaces/OnExplosivePropTakeDamage.h"
+#include "Sandbox/Actors/ExplosiveProps/ExplosivePropsBase.h"
+#include "DrawDebugHelpers.h"
+#include "Sandbox/SandboxGameModeBase.h"
 
 // Sets default values
 AWeaponBase::AWeaponBase()
@@ -36,7 +40,130 @@ void AWeaponBase::BeginPlay()
 	Character = IReferences::Execute_GetAICharacterRef(AAICharacter::StaticClass()->GetDefaultObject());
 
 	Projectile = IReferences::Execute_GetProjectileRef(AProjectileBase::StaticClass()->GetDefaultObject());
+
+	Prop = IReferences::Execute_GetExplosivePropRef(AExplosivePropsBase::StaticClass()->GetDefaultObject());
+
+	Mode = Cast<ASandboxGameModeBase>(UGameplayStatics::GetGameMode(GetWorld()));
 }
+
+void AWeaponBase::SetPropData(FHitResult HitResult, float& NewRadius, int32& DamageDelt)
+{
+	AActor* TempActor = HitResult.Actor.Get();
+
+	if (TempActor->ActorHasTag(TEXT("RedBarrel")))
+	{
+		Prop = Cast<AExplosivePropsBase>(TempActor);
+
+		NewRadius = Prop->PropData.DamageRadius;
+
+		DamageDelt = Prop->PropData.DamageToDeal;
+	}
+
+	else if (TempActor->ActorHasTag(TEXT("OrangeBarrel")))
+	{
+		Prop = Cast<AExplosivePropsBase>(TempActor);
+
+		NewRadius = Prop->PropData.DamageRadius;
+
+		DamageDelt = Prop->PropData.DamageToDeal;
+	}
+
+	else if (TempActor->ActorHasTag(TEXT("PlainBarrel")))
+	{
+		Prop = Cast<AExplosivePropsBase>(TempActor);
+
+		NewRadius = Prop->PropData.DamageRadius;
+
+		DamageDelt = Prop->PropData.DamageToDeal;
+	}
+
+	else if (TempActor->ActorHasTag(TEXT("RedJerryCan")))
+	{
+		Prop = Cast<AExplosivePropsBase>(TempActor);
+
+		NewRadius = Prop->PropData.DamageRadius;
+
+		DamageDelt = Prop->PropData.DamageToDeal;
+	}
+
+	else if (TempActor->ActorHasTag(TEXT("GreenJerryCan")))
+	{
+		Prop = Cast<AExplosivePropsBase>(TempActor);
+
+		NewRadius = Prop->PropData.DamageRadius;
+
+		DamageDelt = Prop->PropData.DamageToDeal;
+	}
+
+	else if (TempActor->ActorHasTag(TEXT("PlainJerryCan")))
+	{
+		Prop = Cast<AExplosivePropsBase>(TempActor);
+
+		NewRadius = Prop->PropData.DamageRadius;
+
+		DamageDelt = Prop->PropData.DamageToDeal;
+	}
+
+	else if (TempActor->ActorHasTag(TEXT("PropaneGasCylinderYellow")))
+	{
+		Prop = Cast<AExplosivePropsBase>(TempActor);
+
+		NewRadius = Prop->PropData.DamageRadius;
+
+		DamageDelt = Prop->PropData.DamageToDeal;
+	}
+
+	else if (TempActor->ActorHasTag(TEXT("PropaneGasCylinderRed")))
+	{
+		Prop = Cast<AExplosivePropsBase>(TempActor);
+
+		NewRadius = Prop->PropData.DamageRadius;
+
+		DamageDelt = Prop->PropData.DamageToDeal;
+	}
+
+	else if (TempActor->ActorHasTag(TEXT("PropaneGasCylinderPlain")))
+	{
+		Prop = Cast<AExplosivePropsBase>(TempActor);
+
+		NewRadius = Prop->PropData.DamageRadius;
+
+		DamageDelt = Prop->PropData.DamageToDeal;
+	}
+
+	else if (TempActor->ActorHasTag(TEXT("PropaneCylinderTallYellow")))
+	{
+		Prop = Cast<AExplosivePropsBase>(TempActor);
+
+		NewRadius = Prop->PropData.DamageRadius;
+
+		DamageDelt = Prop->PropData.DamageToDeal;
+	}
+
+	else if (TempActor->ActorHasTag(TEXT("PropaneCylinderTallRed")))
+	{
+		Prop = Cast<AExplosivePropsBase>(TempActor);
+
+		NewRadius = Prop->PropData.DamageRadius;
+
+		DamageDelt = Prop->PropData.DamageToDeal;
+	}
+
+	else if (TempActor->ActorHasTag(TEXT("PropaneCylinderTallPlain")))
+	{
+		Prop = Cast<AExplosivePropsBase>(TempActor);
+
+		NewRadius = Prop->PropData.DamageRadius;
+
+		DamageDelt = Prop->PropData.DamageToDeal;
+	}
+
+	else
+	{
+		return;
+	}
+}
+
 
 void AWeaponBase::SetCurrentTotalAmmo(int Ammo)
 {
@@ -138,6 +265,8 @@ void AWeaponBase::WeaponFire(EFireType FireType)
 					UGameplayStatics::FinishSpawningActor(Impact, LocalTransform);
 		
 					AddDamage(Hit);
+
+					AddDamageExplosiveProp(Hit);
 				}
 
 				if (bIsAutomatic == true)
@@ -156,7 +285,14 @@ void AWeaponBase::WeaponFire(EFireType FireType)
 
 				UGameplayStatics::FinishSpawningActor(TempImpact, LocalTransform);
 
+				if (Hit.bBlockingHit == true)
+				{
+					SetPropData(Hit, Radius, DamageDeltOnExplosion);
+				}
+
 				AddDamage(Hit);
+
+				AddDamageExplosiveProp(Hit);
 			}
 
 		}
@@ -171,9 +307,16 @@ void AWeaponBase::WeaponFire(EFireType FireType)
 			{
 				CalculateShot(PlayerRef->GetCamera(), WeaponMesh, "Fire_FX_Slot", Hit, Transform);
 
+				Projectile = GetWorld()->SpawnActor<AProjectileBase>(ProjectileSpawn, Transform, SpawnInfo);
+
+				if (Hit.bBlockingHit == true)
+				{
+					SetPropData(Hit, Radius, DamageDeltOnExplosion);
+				}
+
 				AddDamage(Hit);
 
-				Projectile = GetWorld()->SpawnActor<AProjectileBase>(ProjectileSpawn, Transform, SpawnInfo);
+				AddDamageExplosiveProp(Hit);
 			}
 		}
 
@@ -183,7 +326,14 @@ void AWeaponBase::WeaponFire(EFireType FireType)
 
 			Projectile = GetWorld()->SpawnActor<AProjectileBase>(SpawnProjectile, Transform, SpawnInfo);
 
+			if (Hit.bBlockingHit == true)
+			{
+				SetPropData(Hit, Radius, DamageDeltOnExplosion);
+			}
+
 			AddDamage(Hit);
+
+			AddDamageExplosiveProp(Hit);
 		}
 		
 		break;
@@ -293,6 +443,65 @@ void AWeaponBase::AddDamage(FHitResult HitResult)
 			{
 				iTemp->Execute_Take_Damage(TempActor, AmmoData, CriticalHitDamageModifier, HitResult);
 			}
+		}
+	}
+}
+
+void AWeaponBase::AddDamageExplosiveProp(FHitResult HitResult)
+{
+	IOnExplosivePropTakeDamage* iTemp = Cast<IOnExplosivePropTakeDamage>(Prop);
+
+	AActor* TempActor = HitResult.Actor.Get();
+
+	if (iTemp != nullptr)
+	{
+		if (TempActor != nullptr)
+		{
+			if (TempActor->GetClass()->ImplementsInterface(UOnExplosivePropTakeDamage::StaticClass()))
+			{
+				iTemp->Execute_OnPropHit(TempActor, AmmoData.Damage, HitResult);
+
+				DealExplosiveDamage(HitResult);
+			}
+		}
+	}
+}
+
+void AWeaponBase::DealExplosiveDamage(FHitResult HitResult)
+{
+	ITake_Damage* iTemp = Cast<ITake_Damage>(PlayerRef);
+
+	TArray<TEnumAsByte<EObjectTypeQuery>> TraceObjects;
+	TArray<AActor*> ActorsToIgnore;
+	TArray<AActor*> OutActors;
+
+	ActorsToIgnore.Add(this);
+
+	TraceObjects.Add(UEngineTypes::ConvertToObjectType(ECC_WorldDynamic));
+	TraceObjects.Add(UEngineTypes::ConvertToObjectType(ECC_Pawn));
+	
+	UKismetSystemLibrary::SphereOverlapActors(GetWorld(), HitResult.ImpactPoint, Radius, TraceObjects, NULL, ActorsToIgnore, OutActors);
+
+	uint8 Len = OutActors.Num();
+
+	for (uint8 i = 0; i < Len; ++i)
+	{
+		if (iTemp != nullptr)
+		{
+			if (OutActors[i] != nullptr)
+			{
+				if (OutActors[i]->GetClass()->ImplementsInterface(UTake_Damage::StaticClass()))
+				{
+					iTemp->Execute_OnDealExplosiveDamage(OutActors[i], HitResult, DamageDeltOnExplosion);
+
+					UKismetSystemLibrary::DrawDebugSphere(GetWorld(), HitResult.ImpactPoint, Radius, 12, FLinearColor::Red, 6.F, 3.F);
+				}
+			}
+		}
+
+		else
+		{
+			return;
 		}
 	}
 }

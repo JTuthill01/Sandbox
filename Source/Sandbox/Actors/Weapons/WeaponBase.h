@@ -7,18 +7,8 @@
 #include "Sandbox/Interfaces/Take_Damage.h"
 #include "Sandbox/Interfaces/PlayerRef.h"
 #include "Sandbox/Interfaces/References.h"
+#include "Sandbox/Enums/Enums.h"
 #include "WeaponBase.generated.h"
-
-UENUM(BlueprintType)
-enum class EWeaponType : uint8 { TT38, ShortStrokeAR, AmericanShotgun, Bulldog, L86, HandCannon, AK47, SMG, BelgianAR, SKS, XM82, AK74, M4A1, NavySMG, ItalianShotgun, MicroSMG, SVD };
-
-UENUM(BlueprintType)
-enum class EWeaponClass : uint8 { Pistol, Rifle, Shotgun };
-
-UENUM(BlueprintType)
-enum class EFireType : uint8 { Hitscan, Projectile };
-
-enum EShotgunReloadIndex : uint8 { Start, Loop, End };
 
 USTRUCT(BlueprintType)
 struct FWeaponData
@@ -101,7 +91,18 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void AddDamage(FHitResult HitResult);
 
+	UFUNCTION(BlueprintCallable)
+	void AddDamageExplosiveProp(FHitResult HitResult);
+
+	UFUNCTION(BlueprintCallable)
+	void DealExplosiveDamage(FHitResult HitResult);
+
+public:
 	virtual AWeaponBase* GetWeaponRef_Implementation() override;
+
+protected:
+	UFUNCTION(BlueprintCallable)
+	void SetPropData(FHitResult HitResult, float& NewRadius, int32& DamageDelt);
 
 public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = Enums)
@@ -138,6 +139,15 @@ protected:
 
 	UPROPERTY()
 	class AImpactEffects* Impact;
+
+	UPROPERTY()
+	class ASandboxGameModeBase* Mode;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Explosive)
+	float Radius;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Explosive)
+	class AExplosivePropsBase* Prop;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	USkeletalMeshComponent* WeaponMesh;
@@ -255,4 +265,6 @@ protected:
 	FTransform FireTransform;
 
 	int ReloadCurrentAmmo;
+
+	int32 DamageDeltOnExplosion;
 };

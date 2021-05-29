@@ -27,6 +27,8 @@ void AExplosiveBarrelRed::Dead()
 
 	ExplosiveProp->AddImpulse(NewVector);
 
+	UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), SecondExplosionFX, TempVector);
+
 	FTimerDelegate Delegate;
 	Delegate.BindLambda([this] { Destroy(); });
 

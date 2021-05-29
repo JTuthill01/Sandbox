@@ -26,6 +26,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Enum)
 	EPropType PropType;
 
+public:
 	FORCEINLINE class UStaticMeshComponent* GetPropMesh() { return ExplosiveProp; }
 	FORCEINLINE FName GetPropName() { return PropName; }
 

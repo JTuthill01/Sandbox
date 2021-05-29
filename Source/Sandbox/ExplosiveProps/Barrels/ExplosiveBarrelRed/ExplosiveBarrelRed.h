@@ -27,6 +27,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Impulse);
 	float RemoveTime;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = VFX)
+	class UNiagaraSystem* SecondExplosionFX;
+
 private:
 	FTimerHandle RemoveBarrelTimer;
 };

@@ -12,6 +12,8 @@
 #include "Sandbox/Interfaces/References.h"
 #include "Sandbox/Pickups/PickupBase.h"
 #include "Sandbox/Actors/Weapons/WarHammer/WarHammer.h"
+#include "Sandbox/Interfaces/OnInteract.h"
+#include "Sandbox/Actors/Grenades/GrenadeBase.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -44,6 +46,8 @@ APlayerCharacter::APlayerCharacter()
 	RegenerativeHealthRate = 25.F;
 
 	ShotgunClassIndex = static_cast<int32>(EWeaponClass::Shotgun);
+
+	PickupTimer = 0.25F;
 }
 
 // Called when the game starts or when spawned
@@ -56,6 +60,15 @@ void APlayerCharacter::BeginPlay()
 	CurrentWeapon = IReferences::Execute_GetWeaponRef(AWeaponBase::StaticClass()->GetDefaultObject());
 
 	Instance = Arms->GetAnimInstance();
+
+	GetWorld()->GetTimerManager().SetTimer(PickupTimerHandle, this, &APlayerCharacter::ScanForPickups, PickupTimer, true);
+}
+
+void APlayerCharacter::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+
+	GetWorld()->GetTimerManager().ClearAllTimersForObject(this);
 }
 
 // Called every frame
@@ -90,6 +103,69 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	PlayerInputComponent->BindAction(TEXT("ADS"), IE_Pressed, this, &APlayerCharacter::FOnAimEnter);
 	PlayerInputComponent->BindAction(TEXT("ADS"), IE_Released, this, &APlayerCharacter::FOnAimExit);
 	PlayerInputComponent->BindAction(TEXT("Melee"), IE_Pressed, this, &APlayerCharacter::Melee);
+	PlayerInputComponent->BindAction(TEXT("ThrowGrenade"), IE_Pressed, this, &APlayerCharacter::ThrowGrenade);
+}
+
+void APlayerCharacter::TakeGernadeDamage_Implementation(int32 DamageToApply)
+{
+	if (bIsDead == false)
+	{
+		if (CurrentArmor <= DamageToApply)
+		{
+			int TempDamage = DamageToApply - CurrentArmor;
+
+			CurrentHealth = FMath::Clamp(CurrentHealth - TempDamage, 0, MaxHealth);
+
+			CurrentArmor = 0;
+
+			DamageTaken();
+
+			if (CurrentHealth <= 0)
+			{
+				bIsDead = true;
+
+				PlayerDeath();
+			}
+		}
+
+		else
+		{
+			CurrentArmor -= DamageToApply;
+
+			DamageTaken();
+		}
+	}
+}
+
+void APlayerCharacter::OnDealExplosiveDamage_Implementation(FHitResult HitResult, int32 DamageToApply)
+{
+	if (bIsDead == false)
+	{
+		if (CurrentArmor <= DamageToApply)
+		{
+			int TempDamage = DamageToApply - CurrentArmor;
+
+			CurrentHealth = FMath::Clamp(CurrentHealth - TempDamage, 0, MaxHealth);
+
+			CurrentArmor = 0;
+
+			DamageTaken();
+
+			if (CurrentHealth <= 0)
+			{
+				bIsDead = true;
+
+				PlayerDeath();
+			}
+		}
+
+		else
+		{
+			CurrentArmor -= DamageToApply;
+
+			DamageTaken();
+		}
+    }
 }
 
 void APlayerCharacter::PlayerTakeDamage_Implementation(int Damage)
@@ -317,6 +393,10 @@ void APlayerCharacter::SwapWeapon(TSubclassOf<AWeaponBase> WeaponToSpawn, bool& 
 				WeaponSlot_01 = nullptr;
 
 				SpawnWeapon(WeaponToSpawn, IsSuccessful);
+
+				bShouldSpawnPickup = true;
+
+				SpawnPickup();
 			}
 
 			else if (CurrentWeapon == WeaponSlot_02)
@@ -332,6 +412,10 @@ void APlayerCharacter::SwapWeapon(TSubclassOf<AWeaponBase> WeaponToSpawn, bool& 
 				WeaponSlot_02 = nullptr;
 
 				SpawnWeapon(WeaponToSpawn, IsSuccessful);
+
+				bShouldSpawnPickup = true;
+
+				SpawnPickup();
 			}
 		}
 	}
@@ -371,13 +455,25 @@ void APlayerCharacter::SpawnPickup()
 	Params.Owner = this;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	FVector LocationVector = Arms->GetComponentLocation();
+	FVector LocationVector = Camera->GetComponentLocation();
 
-	FRotator LocationRotator = Arms->GetComponentRotation();
+	FRotator LocationRotator = Camera->GetComponentRotation();
+
+	FTransform TempTransform(LocationRotator.Quaternion(), LocationVector);
 
 	if (bShouldSpawnPickup == true)
 	{
-		Pickup = GetWorld()->SpawnActor<APickupBase>(WeaponPickup[PickupIndex], LocationVector, LocationRotator, Params);
+		Pickup = GetWorld()->SpawnActorDeferred<APickupBase>(WeaponPickup[PickupIndex], TempTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+
+		float ImpulseFloat = 3500 * Pickup->GetMesh()->GetMass();
+
+		FVector ImpulseVector(ImpulseFloat, 0, 0);
+
+		Pickup->GetMesh()->AddImpulse(ImpulseVector);
+
+		UGameplayStatics::FinishSpawningActor(Pickup, TempTransform);
+
+		bShouldSpawnPickup = false;
 	}
 }
 
@@ -462,6 +558,8 @@ void APlayerCharacter::Equip()
 	{
 		if (CurrentWeapon != WeaponSlot_01 && bIsFirstSlotFull == true)
 		{
+			bShouldSpawnPickup = false;
+
 			WeaponSlot_02->SetActorHiddenInGame(true);
 
 			WeaponSlot_01->SetActorHiddenInGame(false);
@@ -481,6 +579,8 @@ void APlayerCharacter::Equip()
 
 		else if (CurrentWeapon != WeaponSlot_02 && bIsSecondSlotFull == true)
 		{
+			bShouldSpawnPickup = false;
+
 			WeaponSlot_01->SetActorHiddenInGame(true);
 
 			WeaponSlot_02->SetActorHiddenInGame(false);
@@ -528,6 +628,59 @@ void APlayerCharacter::DebugTakeDamage()
 	}
 }
 
+void APlayerCharacter::ThrowGrenade()
+{
+	if (GrenadeToSpawn)
+	{
+		Grenade = GetWorld()->SpawnActor<AGrenadeBase>(GrenadeToSpawn);
+
+		if (IsValid(Grenade))
+		{
+			Grenade->AttachToComponent(Arms, FAttachmentTransformRules::SnapToTargetIncludingScale, Grenade->GetGrenadeSocketName());
+
+			if (Instance)
+			{
+				Instance->Montage_Play(GrenadeMontage);
+
+				GetCurrentWeapon()->SetActorHiddenInGame(true);
+			}
+		}
+	}
+}
+
+void APlayerCharacter::ScanForPickups()
+{
+	FHitResult HitResult;
+
+	FVector StartVector = Camera->GetComponentLocation();
+	FVector EndVector = StartVector + (Camera->GetForwardVector() * 400.F);
+
+	TArray<TEnumAsByte<EObjectTypeQuery>> TraceObjects;
+	TArray<AActor*> ActorsToIgnore;
+	ActorsToIgnore.Add(this);
+
+	TraceObjects.Add(UEngineTypes::ConvertToObjectType(ECC_WorldStatic));
+	TraceObjects.Add(UEngineTypes::ConvertToObjectType(ECC_WorldDynamic));
+
+	if (UKismetSystemLibrary::LineTraceSingleForObjects(GetWorld(), StartVector, EndVector, TraceObjects, true, ActorsToIgnore, EDrawDebugTrace::None, HitResult, false) == true)
+	{
+		AActor* TempActor = HitResult.Actor.Get();
+
+		if (TempActor)
+		{
+			IOnInteract* iTemp = Cast<IOnInteract>(TempActor);
+
+			if (iTemp)
+			{
+				if (TempActor->GetClass()->ImplementsInterface(UOnInteract::StaticClass()))
+				{
+					iTemp->Execute_OnBeginInteract(TempActor, this);
+				}
+			}
+		}
+	}
+}
+
 void APlayerCharacter::Melee()
 {
 	if (IsValid(HammerSpawn))
@@ -545,6 +698,49 @@ void APlayerCharacter::Melee()
 		else
 		{
 			Instance->Montage_Play(MeleeMontage[DefaultIndex]);
+		}
+	}
+}
+
+void APlayerCharacter::Interact() 
+{ 
+	FHitResult HitResult;
+
+	AActor* TempActor = HitResult.Actor.Get();
+
+	CheckForInteraction(TempActor, HitResult);
+}
+
+void APlayerCharacter::CheckForInteraction(AActor* HitActor, FHitResult& HitResult)
+{
+	FVector Start = Camera->GetComponentLocation();
+	FVector End = Start + (Camera->GetComponentRotation().Vector() * 400.F);
+
+	TArray<TEnumAsByte<EObjectTypeQuery>> TraceObjects;
+	TArray<AActor*> ActorsToIgnore;
+	ActorsToIgnore.Add(this);
+	ActorsToIgnore.Add(CurrentWeapon);
+
+	TraceObjects.Add(UEngineTypes::ConvertToObjectType(ECC_WorldStatic));
+	TraceObjects.Add(UEngineTypes::ConvertToObjectType(ECC_WorldDynamic));
+
+	bool bTempBool = false;
+
+	if (UKismetSystemLibrary::LineTraceSingleForObjects(GetWorld(), Start, End, TraceObjects, true, ActorsToIgnore, EDrawDebugTrace::None, HitResult, true) == true)
+	{
+		HitActor = HitResult.Actor.Get();
+
+		IOnInteract* iTemp = Cast<IOnInteract>(HitActor);
+
+		if (iTemp)
+		{
+			if (HitActor)
+			{
+				if (HitActor->GetClass()->ImplementsInterface(UOnInteract::StaticClass()))
+				{
+					iTemp->Execute_OnInteract(HitActor);
+				}
+			}
 		}
 	}
 }
@@ -632,13 +828,9 @@ void APlayerCharacter::FireAnimationToPlay()
 
 	int32 WeaponIndex = static_cast<int32>(CurrentWeapon->WeaponType);
 
-	FString TempStr = FString::FromInt(WeaponIndex);
-
 	if (FireMonatge.IsValidIndex(WeaponIndex))
 	{
 		LocalInstance->Montage_Play(FireMonatge[WeaponIndex]);
-
-		GEngine->AddOnScreenDebugMessage(-1, 6.F, FColor::Yellow, TEXT("Weapon Index is: ") + TempStr);
 	}
 }
 
@@ -655,6 +847,14 @@ void APlayerCharacter::ReloadAnimationToPlay()
 		{
 			LocalInstance->Montage_Play(ReloadMonatge[WeaponIndex]);
 		}
+	}
+}
+
+void APlayerCharacter::OnGrenadeReleased()
+{
+	if (Grenade)
+	{
+		Grenade->OnReleased(UKismetMathLibrary::GetForwardVector(GetControlRotation()));
 	}
 }
 
@@ -689,11 +889,13 @@ void APlayerCharacter::HideHammer(bool ShouldHide)
 
 APlayerCharacter* APlayerCharacter::GetPlayerRef_Implementation() { return this; }
 
+void APlayerCharacter::DamageTaken_Implementation(){}
+
+void APlayerCharacter::UpdateShotgunAmmo_Implementation() {}
+
 void APlayerCharacter::FOnAimEnter() { OnAimEnter.Broadcast(); }
 
 void APlayerCharacter::FOnAimExit() { OnAimExit.Broadcast(); }
-
-void APlayerCharacter::Interact() { OnInteract.Broadcast(); }
 
 void APlayerCharacter::StartJump() { Jump(); }
 

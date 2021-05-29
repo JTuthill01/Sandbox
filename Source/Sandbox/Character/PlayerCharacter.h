@@ -5,6 +5,7 @@
 #include "Sandbox/Actors/Weapons/WeaponBase.h"
 #include "Sandbox/Interfaces/Take_Damage.h"
 #include "Sandbox/Interfaces/PlayerRef.h"
+#include "Sandbox/Enums/Enums.h"
 #include "PlayerCharacter.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FInteract);
@@ -13,12 +14,6 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FAimExit);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FStopFire);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FShotgunReload);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFireWeapon, EWeaponType, Weapon);
-
-UENUM(BlueprintType)
-enum class EHasWeapon : uint8 { NoWeapon, HasWeapon };
-
-UENUM(BlueprintType)
-enum class EWeaponSlot : uint8 { First_Slot, Second_Slot, Third_Slot };
 
 UCLASS()
 class SANDBOX_API APlayerCharacter : public ACharacter, public ITake_Damage, public IPlayerRef
@@ -81,6 +76,15 @@ public:
 	UFUNCTION(BlueprintPure)
 	void SetIconImage(UMaterialInstance*& Image);
 
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	void CanSwitchWeapon(bool& CanSwitch);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void DamageTaken();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void UpdateShotgunAmmo();
+
 	UFUNCTION(BlueprintCallable)
 	void HideHammer(bool ShouldHide);
 
@@ -105,6 +109,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void ReloadAnimationToPlay();
 
+	UFUNCTION(BlueprintCallable)
+	void OnGrenadeReleased();
+
 	UFUNCTION(BlueprintPure, BlueprintCallable)
 	void CurrentWeaponName(FName& NameOfWeapon);
 
@@ -124,6 +131,8 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
 
 	UFUNCTION(BlueprintCallable)
 	void ShowWeapon(AWeaponBase* Weapon);
@@ -149,8 +158,14 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void Equip();
 
-	UFUNCTION(BlueprintCallable, BlueprintPure)
-	void CanSwitchWeapon(bool& CanSwitch);
+	UFUNCTION(BlueprintCallable)
+	void DebugTakeDamage();
+
+	UFUNCTION(BlueprintCallable)
+	void ThrowGrenade();
+
+	UFUNCTION(BlueprintCallable)
+	void ScanForPickups();
 
 public:
 
@@ -164,6 +179,10 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	virtual void PlayerTakeDamage_Implementation(int Damage) override;
+
+	virtual void OnDealExplosiveDamage_Implementation(FHitResult HitResult, int32 DamageToApply) override;
+
+	virtual void TakeGernadeDamage_Implementation(int32 DamageToApply) override;
 
 	virtual APlayerCharacter* GetPlayerRef_Implementation() override;
 
@@ -184,6 +203,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	TArray<class UAnimMontage*> MeleeMontage;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	class UAnimMontage* GrenadeMontage;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
 	AWeaponBase* WeaponSlot_01;
 
@@ -200,6 +222,9 @@ protected:
 	class APickupBase* Pickup;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup")
+	TSubclassOf<class APickupBase> PickupInteract;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup")
 	TArray< TSubclassOf<class APickupBase>> WeaponPickup;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup")
@@ -207,6 +232,18 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pickup")
 	bool bShouldSpawnPickup;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "BoxesAndCases")
+	TSubclassOf<class ABoxesAndCasesBase> CaseRef;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AnimatedCases")
+	TSubclassOf<class AAnimatedCases> AnimatedCaseRef;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Grenade)
+	class AGrenadeBase* Grenade;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Grenade)
+	TSubclassOf<class AGrenadeBase> GrenadeToSpawn;
 
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "FOV")
 	float DefaultFOV;
@@ -296,7 +333,6 @@ protected:
 	int32 ShotgunClassIndex;
 
 private:
-
 	void MoveForward(float Value);
 	void MoveRight(float Value);
 	void MoveUp(float Value);
@@ -310,12 +346,15 @@ private:
 	void StartSprint();
 	void StopSprint();
 	void Interact();
-	void DebugTakeDamage();
 	void Melee();
+	void CheckForInteraction(AActor* HitActor, FHitResult& HitResult);
 	
 	float DefaultWalkSpeed;
 	float AnimTime;
 	float ReloadTime;
+	float PickupTimer;
 
 	bool bShouldBeShown;
+
+	FTimerHandle PickupTimerHandle;
 };

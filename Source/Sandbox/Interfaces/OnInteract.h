@@ -19,4 +19,7 @@ class SANDBOX_API IOnInteract
 public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void OnInteract();
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void OnBeginInteract(AActor* OtherActor);
 };

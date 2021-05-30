@@ -32,6 +32,9 @@ APlayerCharacter::APlayerCharacter()
 	bCanFire = true;
 	bCanSwitchWeapon = true;
 	bCanReload = true;
+	bCanUseADS_Idle = false;
+	bCanUseADS_Walk = false;
+	bCanUseADS_Fire = false;
 
 	DefaultFOV = 90.F;
 
@@ -100,10 +103,10 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	PlayerInputComponent->BindAction(TEXT("Interact"), IE_Released, this, &APlayerCharacter::SpawnPickup);
 	PlayerInputComponent->BindAction(TEXT("Reload"), IE_Pressed, this, &APlayerCharacter::Reload);
 	PlayerInputComponent->BindAction(TEXT("Damage"), IE_Pressed, this, &APlayerCharacter::DebugTakeDamage);
-	PlayerInputComponent->BindAction(TEXT("ADS"), IE_Pressed, this, &APlayerCharacter::FOnAimEnter);
-	PlayerInputComponent->BindAction(TEXT("ADS"), IE_Released, this, &APlayerCharacter::FOnAimExit);
 	PlayerInputComponent->BindAction(TEXT("Melee"), IE_Pressed, this, &APlayerCharacter::Melee);
 	PlayerInputComponent->BindAction(TEXT("ThrowGrenade"), IE_Pressed, this, &APlayerCharacter::ThrowGrenade);
+	PlayerInputComponent->BindAction(TEXT("ADS"), IE_Pressed, this, &APlayerCharacter::ADSPressed);
+	PlayerInputComponent->BindAction(TEXT("ADS"), IE_Released, this, &APlayerCharacter::ADSReleased);
 }
 
 void APlayerCharacter::TakeGernadeDamage_Implementation(int32 DamageToApply)
@@ -326,7 +329,7 @@ void APlayerCharacter::Fire()
 {
 	int32 WeaponIndex = static_cast<int32>(CurrentWeapon->WeaponClass);
 
-	if (bCanFire == true && bIsReloading == false && bIsChangingWeapon == false)
+	if (bCanFire && !bIsReloading && !bIsChangingWeapon)
 	{
 		if (CurrentWeapon->HasAmmoInMag() == true)
 		{
@@ -334,9 +337,17 @@ void APlayerCharacter::Fire()
 
 			OnFireWeapon.Broadcast(CurrentWeapon->WeaponType);
 
-			FireAnimationToPlay();
-
 			bIsFiring = true;
+
+			if (!bCanUseADS_Fire)
+			{
+				FireAnimationToPlay();
+			}
+
+			else
+			{
+				PlayADS_Fire();
+			}
 		}
 
 		else if (WeaponIndex != ShotgunClassIndex)
@@ -513,6 +524,16 @@ void APlayerCharacter::MoveForward(float Value)
 	if (Value != 0.F)
 	{
 		AddMovementInput(GetActorForwardVector() * Value);
+
+		if (bCanUseADS_Walk && !bIsFiring)
+		{
+			PlayADS_Walk();
+		}
+	}
+
+	else
+	{
+		StopADS_Walk();
 	}
 }
 
@@ -521,6 +542,16 @@ void APlayerCharacter::MoveRight(float Value)
 	if (Value != 0.F)
 	{
 		AddMovementInput(GetActorRightVector(), Value);
+
+		if (bCanUseADS_Walk && !bIsFiring)
+		{
+			PlayADS_Walk();
+		}
+	}
+
+	else
+	{
+		StopADS_Walk();
 	}
 }
 
@@ -681,6 +712,50 @@ void APlayerCharacter::ScanForPickups()
 	}
 }
 
+void APlayerCharacter::PlayADS_Idle()
+{
+	Instance = Arms->GetAnimInstance();
+
+	int32 WeaponIndex = static_cast<int32>(CurrentWeapon->WeaponType);
+
+	if (ADSMontage_Idle.IsValidIndex(WeaponIndex))
+	{
+		Instance->Montage_Play(ADSMontage_Idle[WeaponIndex]);
+	}
+}
+
+void APlayerCharacter::PlayADS_Fire()
+{
+	Instance = Arms->GetAnimInstance();
+
+	int32 WeaponIndex = static_cast<int32>(CurrentWeapon->WeaponType);
+
+	if (ADSMontage_Fire.IsValidIndex(WeaponIndex))
+	{
+		Instance->Montage_Play(ADSMontage_Fire[WeaponIndex]);
+	}
+}
+
+void APlayerCharacter::PlayADS_Walk()
+{
+	int32 WeaponIndex = static_cast<int32>(CurrentWeapon->WeaponType);
+
+	if (ADSMontage_Walk.IsValidIndex(WeaponIndex))
+	{
+		Instance->Montage_Play(ADSMontage_Walk[WeaponIndex]);
+	}
+}
+
+void APlayerCharacter::StopADS_Walk()
+{
+	int32 WeaponIndex = static_cast<int32>(CurrentWeapon->WeaponType);
+
+	if (Instance->Montage_IsPlaying(ADSMontage_Walk[WeaponIndex]))
+	{
+		Instance->Montage_Stop(ADSBlendOutTime, ADSMontage_Walk[WeaponIndex]);
+	}
+}
+
 void APlayerCharacter::Melee()
 {
 	if (IsValid(HammerSpawn))
@@ -781,6 +856,45 @@ void APlayerCharacter::FireReleased()
 	}
 }
 
+void APlayerCharacter::ADSPressed()
+{
+	bCanUseADS_Idle = true;
+
+	Instance = Arms->GetAnimInstance();
+
+	int32 WeaponIndex = static_cast<int32>(CurrentWeapon->WeaponType);
+
+	if (ADSMontage_Idle.IsValidIndex(WeaponIndex))
+	{
+		Instance->Montage_Play(ADSMontage_Idle[WeaponIndex]);
+	}
+
+	bCanUseADS_Walk = true;
+
+	bCanUseADS_Fire = true;
+}
+
+void APlayerCharacter::ADSReleased()
+{
+	bCanUseADS_Idle = false;
+
+	bCanUseADS_Walk = false;
+
+	bCanUseADS_Fire = false;
+
+	int32 WeaponIndex = static_cast<int32>(CurrentWeapon->WeaponType);
+
+	if (Instance->Montage_IsPlaying(ADSMontage_Idle[WeaponIndex]))
+	{
+		Instance->Montage_Stop(ADSBlendOutTime, ADSMontage_Idle[WeaponIndex]);
+	}
+
+	if (Instance->Montage_IsPlaying(ADSMontage_Fire[WeaponIndex]))
+	{
+		Instance->Montage_Stop(ADSBlendOutTime, ADSMontage_Fire[WeaponIndex]);
+	}
+}
+
 void APlayerCharacter::RegenerateHealth()
 {
 	if (CurrentHealth < MaxHealth && bIsDead == false)
@@ -820,23 +934,28 @@ void APlayerCharacter::StopFire()
 	bIsFiring = false;
 
 	LoopIndex = CurrentWeapon->GetCurrentAmmo();
+
+	if (bCanUseADS_Idle)
+	{
+		PlayADS_Idle();
+	}
 }
 
 void APlayerCharacter::FireAnimationToPlay()
 {
-	UAnimInstance* LocalInstance = Arms->GetAnimInstance();
+	Instance = Arms->GetAnimInstance();
 
 	int32 WeaponIndex = static_cast<int32>(CurrentWeapon->WeaponType);
 
 	if (FireMonatge.IsValidIndex(WeaponIndex))
 	{
-		LocalInstance->Montage_Play(FireMonatge[WeaponIndex]);
+		Instance->Montage_Play(FireMonatge[WeaponIndex]);
 	}
 }
 
 void APlayerCharacter::ReloadAnimationToPlay()
 {
-	UAnimInstance* LocalInstance = Arms->GetAnimInstance();
+	Instance = Arms->GetAnimInstance();
 
 	int32 WeaponIndex = static_cast<int32>(CurrentWeapon->WeaponType);
 	int32 ShotgunIndex = static_cast<int32>(CurrentWeapon->WeaponClass);
@@ -845,9 +964,25 @@ void APlayerCharacter::ReloadAnimationToPlay()
 	{
 		if (ReloadMonatge.IsValidIndex(WeaponIndex))
 		{
-			LocalInstance->Montage_Play(ReloadMonatge[WeaponIndex]);
+			Instance->Montage_Play(ReloadMonatge[WeaponIndex]);
+
+			if (Instance->Montage_IsPlaying(ADSMontage_Fire[WeaponIndex]))
+			{
+				Instance->Montage_Stop(ADSBlendOutTime, ADSMontage_Fire[WeaponIndex]);
+			}
+
+			if (Instance->Montage_IsPlaying(ADSMontage_Idle[WeaponIndex]))
+			{
+				Instance->Montage_Stop(ADSBlendOutTime, ADSMontage_Idle[WeaponIndex]);
+			}
+
+			if (Instance->Montage_IsPlaying(ADSMontage_Walk[WeaponIndex]))
+			{
+				Instance->Montage_Stop(ADSBlendOutTime, ADSMontage_Walk[WeaponIndex]);
+			}
 		}
 	}
+	
 }
 
 void APlayerCharacter::OnGrenadeReleased()
@@ -892,10 +1027,6 @@ APlayerCharacter* APlayerCharacter::GetPlayerRef_Implementation() { return this;
 void APlayerCharacter::DamageTaken_Implementation(){}
 
 void APlayerCharacter::UpdateShotgunAmmo_Implementation() {}
-
-void APlayerCharacter::FOnAimEnter() { OnAimEnter.Broadcast(); }
-
-void APlayerCharacter::FOnAimExit() { OnAimExit.Broadcast(); }
 
 void APlayerCharacter::StartJump() { Jump(); }
 

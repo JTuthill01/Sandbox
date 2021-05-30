@@ -9,8 +9,6 @@
 #include "PlayerCharacter.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FInteract);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FAimEnter);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FAimExit);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FStopFire);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FShotgunReload);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FFireWeapon, EWeaponType, Weapon);
@@ -32,12 +30,6 @@ public:
 
 	UPROPERTY(BlueprintAssignable)
 	FFireWeapon OnFireWeapon;
-
-	UPROPERTY(BlueprintAssignable)
-	FAimEnter OnAimEnter;
-
-	UPROPERTY(BlueprintAssignable)
-	FAimExit OnAimExit;
 
 	UPROPERTY(BlueprintAssignable)
 	FShotgunReload OnShotgunReload;
@@ -92,12 +84,6 @@ public:
 	void SpawnPickup();
 
 	UFUNCTION(BlueprintCallable)
-	void FOnAimEnter();
-
-	UFUNCTION(BlueprintCallable)
-	void FOnAimExit();
-
-	UFUNCTION(BlueprintCallable)
 	void Reload();
 
 	UFUNCTION(BlueprintCallable)
@@ -147,6 +133,12 @@ protected:
 	void FireReleased();
 
 	UFUNCTION(BlueprintCallable)
+	void ADSPressed();
+
+	UFUNCTION(BlueprintCallable)
+	void ADSReleased();
+
+	UFUNCTION(BlueprintCallable)
 	void RegenerateHealth();
 
 	UFUNCTION(BlueprintCallable)
@@ -166,6 +158,18 @@ protected:
 
 	UFUNCTION(BlueprintCallable)
 	void ScanForPickups();
+
+	UFUNCTION()
+	void PlayADS_Idle();
+
+	UFUNCTION()
+	void PlayADS_Fire();
+
+	UFUNCTION()
+	void PlayADS_Walk();
+
+	UFUNCTION()
+	void StopADS_Walk();
 
 public:
 
@@ -204,7 +208,19 @@ protected:
 	TArray<class UAnimMontage*> MeleeMontage;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TArray<class UAnimMontage*> ADSMontage_Idle;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TArray<class UAnimMontage*> ADSMontage_Fire;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	TArray<class UAnimMontage*> ADSMontage_Walk;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
 	class UAnimMontage* GrenadeMontage;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Animation")
+	float ADSBlendOutTime;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon")
 	AWeaponBase* WeaponSlot_01;
@@ -331,6 +347,15 @@ protected:
 
 	UPROPERTY()
 	int32 ShotgunClassIndex;
+
+	UPROPERTY()
+	bool bCanUseADS_Idle;
+
+	UPROPERTY()
+	bool bCanUseADS_Fire;
+
+	UPROPERTY()
+	bool bCanUseADS_Walk;
 
 private:
 	void MoveForward(float Value);
